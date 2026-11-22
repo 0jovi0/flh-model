@@ -26,13 +26,21 @@ module tracker_connect {
   def freshLeader(seed: int): Slot -> Choice =
     SLOTS.mapBy(s => productionParent(newTracker(initialRoot(seed)), s))
 
-  // The two picks choose nothing (each set has one element). They are there
-  // so the trace tells the driver the root block and the last slot of the
-  // instance: a trace records the values an action picks, and the driver sees
-  // only the action name and its picks.
+  // The four picks choose nothing (each set has one element). They are
+  // there so the trace tells the driver about the instance: a trace records
+  // the values an action picks, and the driver sees only the action name and
+  // its picks.
+  //   root   - the root block the run starts from
+  //   last   - the last slot of the instance
+  //   blocks - every block of the instance, the root included
+  //   count  - how many blocks that must be. The driver checks that there
+  //            are that many, each with its own id: two blocks with one id
+  //            would be one element of `blocks`.
   action initSeeded(seed: int): bool = {
     nondet root = oneOf(Set(initialRoot(seed)))
     nondet last = oneOf(Set(H))
+    nondet blocks = oneOf(Set(allBlocks(seed).union(Set(initialRoot(seed)))))
+    nondet count = oneOf(Set(SPAN * BLOCKS_PER_SLOT + 1))
     all { initWith(seed), leaderBefore' = freshLeader(seed) }
   }
   // Fixed block ids.
@@ -43,37 +51,98 @@ module tracker_connect {
     initSeeded(seed)
   }
 
+  // ---- which steps a trace is made of ----
+  //
+  // A call for a slot at or below the root is ignored by the tracker, and so
+  // is a certificate it already holds. With plain random picks such calls
+  // are most of a trace, so both steps below take most of their picks from
+  // what is new above the root. They keep a share of passed slots and
+  // repeats: "ignore it" is a rule of the tracker too, and those are the
+  // calls that test it.
+  //
+  // Quint picks one branch of `any` with equal chance, so a branch is
+  // written several times to make it more likely. The blocks inside `any`
+  // are left unnamed so that a trace records the name of the action they
+  // call (certify, deliverCertified, nodeCertified, ...), which is what the
+  // driver matches on.
+
+  // What would be new, above the node's root. A pick from an empty set
+  // switches its branch off for that step.
+  def newToNetwork: Set[Block] = BLOCKS.filter(b => b.slot > tr.root and not(wCerts.contains(b)))
+  def newSkipsForNetwork: Set[Slot] = FREE_SLOTS.filter(s => s > tr.root and not(wSkips.contains(s)))
+  def notYetFinal: Set[Block] = wCerts.filter(b => b.slot > tr.root and not(wFinal.contains(b)))
+  def undelivered: Set[Block] = wCerts.filter(b => b.slot > tr.root and not(certs.contains(b)))
+  def undeliveredSkips: Set[Slot] = wSkips.filter(s => s > tr.root and not(skips.contains(s)))
+  def newToNode: Set[Block] = BLOCKS.filter(b => b.slot > tr.root and not(certs.contains(b)))
+  def newSkipsForNode: Set[Slot] = FREE_SLOTS.filter(s => s > tr.root and not(skips.contains(s)))
+
   // The driver of tracker.qnt: a network under the assumptions, and a node
   // that receives what the network has.
-  action stepC = all { step, leaderBefore' = leaderNow }
+  action stepC = all {
+    any {
+      // the network produces something above the node's root
+      { nondet b = oneOf(newToNetwork)
+        nondet p = oneOf(wCerts)
+        certify(b, p) },
+      { nondet b = oneOf(newToNetwork)
+        nondet p = oneOf(wCerts)
+        certify(b, p) },
+      { nondet s = oneOf(newSkipsForNetwork)
+        skipSlot(s) },
+      { nondet b = oneOf(notYetFinal)
+        finalize(b) },
+      // the node receives something new above its root
+      { nondet b = oneOf(undelivered)
+        deliverCertified(b) },
+      { nondet b = oneOf(undelivered)
+        deliverCertified(b) },
+      { nondet b = oneOf(undelivered)
+        deliverCertified(b) },
+      { nondet s = oneOf(undeliveredSkips)
+        deliverSkip(s) },
+      { nondet s = oneOf(undeliveredSkips)
+        deliverSkip(s) },
+      { nondet b = oneOf(wFinal)
+        advanceRoot(b) },
+      // anything tracker.qnt allows, passed slots and repeats included
+      step,
+    },
+    leaderBefore' = leaderNow,
+  }
 
   // Any call sequence: no network and no assumptions. Any block is
   // handed to the tracker as certified, any slot as skipped, and the root
   // moves to any block one or two slots above it. This reaches what stepC
   // cannot: a fifth block in a slot (the panic), and a root without a
   // certificate.
-  //
-  // Quint picks one branch of `any` with equal chance, so a branch is
-  // repeated to make it more likely: five certified blocks and four skips
-  // for every root move. With equal chances the root reaches the last slot
-  // within a few steps, and every later call is ignored.
-  action rawCertified = {
-    nondet b = oneOf(BLOCKS)
-    nodeCertified(b)
-  }
-  action rawSkip = {
-    nondet s = oneOf(FREE_SLOTS)
-    nodeSkip(s)
-  }
-  action rawRoot = {
-    nondet b = oneOf(BLOCKS)
-    all { b.slot <= tr.root + 2, nodeRoot(b) }
-  }
   action stepRaw = all {
     any {
-      rawCertified, rawCertified, rawCertified, rawCertified, rawCertified,
-      rawSkip, rawSkip, rawSkip, rawSkip,
-      rawRoot,
+      // something new above the root
+      { nondet b = oneOf(newToNode)
+        nodeCertified(b) },
+      { nondet b = oneOf(newToNode)
+        nodeCertified(b) },
+      { nondet b = oneOf(newToNode)
+        nodeCertified(b) },
+      { nondet b = oneOf(newToNode)
+        nodeCertified(b) },
+      { nondet s = oneOf(newSkipsForNode)
+        nodeSkip(s) },
+      { nondet s = oneOf(newSkipsForNode)
+        nodeSkip(s) },
+      { nondet s = oneOf(newSkipsForNode)
+        nodeSkip(s) },
+      // any block and any slot, passed ones and repeats included
+      { nondet b = oneOf(BLOCKS)
+        nodeCertified(b) },
+      { nondet s = oneOf(FREE_SLOTS)
+        nodeSkip(s) },
+      // the root moves up by one or two slots, but only once the node has
+      // received six certificates for every slot the root has already
+      // climbed. A root that climbs freely reaches the last slot long before
+      // the trace ends, and from then on every call is on a passed slot.
+      { nondet b = oneOf(BLOCKS.filter(b => b.slot > tr.root and b.slot <= tr.root + 2))
+        all { certs.size() + skips.size() >= 6 * (tr.root - N + 1), nodeRoot(b) } },
     },
     leaderBefore' = leaderNow,
   }
@@ -95,9 +164,12 @@ module c_n103 { import tracker_connect(W = 4, N = 103, SPAN = 9, BLOCKS_PER_SLOT
 module c_b5 { import tracker_connect(W = 4, N = 101, SPAN = 5, BLOCKS_PER_SLOT = 5, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true).* }
 module c_free { import tracker_connect(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = false).* }
 module c_nofinal { import tracker_connect(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = false, ASSUME_CHAIN = true).* }
-// For stepRaw: five blocks per slot so the limit of 4 can be exceeded. The
-// two assumptions play no part in stepRaw.
-module c_raw { import tracker_connect(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 5, MAX_CERTIFIED = 4, ASSUME_FINAL = false, ASSUME_CHAIN = false).* }
-// The same with only three slots, so that five blocks of one slot arrive in
-// most runs: this is the instance that exercises the panic.
+// For stepRaw. The two assumptions play no part in it.
+// c_raw: four blocks per slot, so slots fill up to the limit but the tracker
+// never panics and every step of a trace counts.
+module c_raw { import tracker_connect(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 4, MAX_CERTIFIED = 4, ASSUME_FINAL = false, ASSUME_CHAIN = false).* }
+// c_raw_small: five blocks per slot on three slots, so a fifth block of one
+// slot arrives within 20 steps in most runs. This is the instance that
+// exercises the panic. After a panic the rest of a trace only checks that
+// nothing moves, so it is run with short traces.
 module c_raw_small { import tracker_connect(W = 4, N = 101, SPAN = 3, BLOCKS_PER_SLOT = 5, MAX_CERTIFIED = 4, ASSUME_FINAL = false, ASSUME_CHAIN = false).* }

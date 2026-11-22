@@ -368,10 +368,10 @@ index 1c9f2dc..1804807 100644
 +mod quint_connect;
 diff --git a/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs b/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs
 new file mode 100644
-index 0000000..e45f386
+index 0000000..0240dc9
 --- /dev/null
 +++ b/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs
-@@ -0,0 +1,530 @@
+@@ -0,0 +1,742 @@
 +//! ag-model hook.
 +//!
 +//! Model-based test of `ParentReadyTracker` against the Quint model in
@@ -397,6 +397,14 @@ index 0000000..e45f386
 +//!
 +//! A failure prints `Reproduce this error with QUINT_SEED=<seed>`; put that
 +//! variable in front of the same command to replay the same traces.
++//!
++//! To watch both sides, set `AG_TRACE` and pass `--nocapture`. For every step
++//! this prints the call made on the Rust tracker, the events it returned, and
++//! the two views that are compared (`model:` from the trace, `rust:` from the
++//! tracker). `AG_TRACE=2` adds the tracker's own `Debug` output. The test
++//! `one_short_trace` keeps the output to one trace of 20 steps:
++//!   `AG_TRACE=1 /opt/ag-model/t test -p agave-votor --features agave-unstable-api \
++//!        --lib quint_connect::one_short_trace -- --nocapture`
 +
 +// Named imports, not `super::*`: a glob would bring this module's own name
 +// into scope, where it would clash with the `quint_connect` crate.
@@ -414,9 +422,18 @@ index 0000000..e45f386
 +    solana_keypair::Keypair,
 +    std::{
 +        collections::{BTreeMap, BTreeSet},
++        fmt,
 +        panic::{catch_unwind, AssertUnwindSafe},
 +    },
 +};
++
++/// Level of the `AG_TRACE` environment variable; 0 when it is not set.
++fn trace_level() -> u8 {
++    std::env::var("AG_TRACE")
++        .ok()
++        .map(|level| level.parse().unwrap_or(1))
++        .unwrap_or(0)
++}
 +
 +// ---------------------------------------------------------------------------
 +// The model's values, as they appear in a trace
@@ -483,6 +500,27 @@ index 0000000..e45f386
 +    Parent(QBlock),
 +}
 +
++impl fmt::Display for QBlock {
++    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
++        write!(f, "{}.{}", self.slot, self.id)
++    }
++}
++
++impl fmt::Display for QChoice {
++    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
++        match self {
++            Self::MissedWindow => write!(f, "MissedWindow"),
++            Self::ParentNotReady => write!(f, "ParentNotReady"),
++            Self::Parent(block) => write!(f, "Parent({block})"),
++        }
++    }
++}
++
++fn list<T: fmt::Display>(items: impl IntoIterator<Item = T>) -> String {
++    let items: Vec<String> = items.into_iter().map(|item| item.to_string()).collect();
++    format!("[{}]", items.join(", "))
++}
++
 +/// The model's tracker record (`tr`).
 +#[derive(Deserialize, Debug)]
 +struct QTracker {
@@ -527,6 +565,35 @@ index 0000000..e45f386
 +    }
 +}
 +
++/// How a view is printed under `AG_TRACE`. Blocks are written `slot.id`.
++impl fmt::Display for View {
++    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
++        if self.panicked {
++            return write!(f, "panicked");
++        }
++        write!(f, "root={} highest={}", self.root, self.highest)?;
++        for (slot, status) in &self.st {
++            write!(
++                f,
++                "\n      slot {slot}: skip={} certified={} parents={}",
++                status.skip,
++                list(&status.certified),
++                list(&status.parents)
++            )?;
++        }
++        let events = self
++            .events
++            .iter()
++            .map(|event| format!("{} <- {}", event.slot, event.parent));
++        write!(f, "\n      events (sorted): {}", list(events))?;
++        let leader = self
++            .leader_before
++            .iter()
++            .map(|(slot, choice)| format!("{slot}: {choice}"));
++        write!(f, "\n      leader before the step: {}", list(leader))
++    }
++}
++
 +/// Reads the model variable whose name ends in `suffix`. In a trace the
 +/// variables are named `<instance>::tracker_connect::<name>`.
 +fn var<T: DeserializeOwned>(vars: &Record, suffix: &str) -> Result<T> {
@@ -545,27 +612,45 @@ index 0000000..e45f386
 +            bail!("the model state is not a record")
 +        };
 +        let tr: QTracker = var(&vars, "::tr")?;
-+        if tr.panicked {
-+            return Ok(Self::dead());
++        let view = if tr.panicked {
++            Self::dead()
++        } else {
++            let mut events = tr.events;
++            events.sort();
++            Self {
++                panicked: false,
++                root: tr.root,
++                highest: tr.highest,
++                st: tr
++                    .st
++                    .into_iter()
++                    .filter(|(_, status)| *status != QStatus::default())
++                    .collect(),
++                events,
++                leader_before: var(&vars, "::leaderBefore")?,
++            }
++        };
++        if trace_level() > 0 {
++            eprintln!("  model: {view}");
 +        }
-+        let mut events = tr.events;
-+        events.sort();
-+        Ok(Self {
-+            panicked: false,
-+            root: tr.root,
-+            highest: tr.highest,
-+            st: tr
-+                .st
-+                .into_iter()
-+                .filter(|(_, status)| *status != QStatus::default())
-+                .collect(),
-+            events,
-+            leader_before: var(&vars, "::leaderBefore")?,
-+        })
++        Ok(view)
 +    }
 +
 +    /// The view of the Rust tracker.
 +    fn from_driver(driver: &TrackerDriver) -> Result<Self> {
++        let view = Self::of_tracker(driver)?;
++        if trace_level() > 0 {
++            eprintln!("  rust:  {view}");
++        }
++        if trace_level() > 1 {
++            eprintln!("  rust, as the tracker prints itself: {:#?}", driver.tracker()?);
++        }
++        Ok(view)
++    }
++}
++
++impl View {
++    fn of_tracker(driver: &TrackerDriver) -> Result<Self> {
 +        if driver.panicked {
 +            return Ok(Self::dead());
 +        }
@@ -613,6 +698,37 @@ index 0000000..e45f386
 +    }
 +}
 +
++/// Block ids must not conflict. `count` is how many blocks the instance has;
++/// there must be that many blocks, that many different ids, and that many
++/// different real blocks, and every real block must translate back to the
++/// model block it came from.
++fn check_ids(blocks: &BTreeSet<QBlock>, count: usize) -> Result {
++    ensure!(
++        blocks.len() == count,
++        "the instance should have {count} blocks but names {}: two blocks share a slot and an id",
++        blocks.len()
++    );
++    let ids: BTreeSet<u64> = blocks.iter().map(|block| block.id).collect();
++    ensure!(
++        ids.len() == count,
++        "block ids conflict: {count} blocks but only {} different ids",
++        ids.len()
++    );
++    let real: BTreeSet<Block> = blocks.iter().map(|block| block.to_block()).collect();
++    ensure!(
++        real.len() == count,
++        "real block ids conflict: {count} blocks but only {} different real blocks",
++        real.len()
++    );
++    for block in blocks {
++        ensure!(
++            QBlock::from_block(&block.to_block())? == *block,
++            "{block} does not survive the translation to a real block and back"
++        );
++    }
++    Ok(())
++}
++
 +fn to_set(blocks: &[Block]) -> Result<BTreeSet<QBlock>> {
 +    blocks.iter().map(QBlock::from_block).collect()
 +}
@@ -635,11 +751,16 @@ index 0000000..e45f386
 +    tracker: Option<ParentReadyTracker>,
 +    /// First and last slot of the model instance.
 +    slots: (Slot, Slot),
++    /// Every block of the model instance, the root included.
++    blocks: BTreeSet<QBlock>,
 +    /// Every ParentReady event the tracker has emitted in this trace.
 +    events: Vec<QEvent>,
 +    /// A call hit the tracker's assert.
 +    panicked: bool,
 +    leader_before: BTreeMap<Slot, QChoice>,
++    /// Trace and step counters, only for the `AG_TRACE` output.
++    trace_no: usize,
++    step_no: usize,
 +}
 +
 +impl TrackerDriver {
@@ -648,9 +769,19 @@ index 0000000..e45f386
 +            cluster_info: get_cluster_info(Keypair::new()),
 +            tracker: None,
 +            slots: (0, 0),
++            blocks: BTreeSet::new(),
 +            events: vec![],
 +            panicked: false,
 +            leader_before: BTreeMap::new(),
++            trace_no: 0,
++            step_no: 0,
++        }
++    }
++
++    /// Prints one line of the `AG_TRACE` output.
++    fn note(&self, what: impl fmt::Display) {
++        if trace_level() > 0 {
++            eprintln!("  {what}");
 +        }
 +    }
 +
@@ -662,7 +793,16 @@ index 0000000..e45f386
 +
 +    /// Start of a trace: a fresh tracker rooted at `root`, as the model's
 +    /// `newTracker` (root block certified, ready parent for the next slot).
-+    fn init(&mut self, root: QBlock, last: Slot) -> Result {
++    fn init(
++        &mut self,
++        root: QBlock,
++        last: Slot,
++        blocks: BTreeSet<QBlock>,
++        count: usize,
++    ) -> Result {
++        check_ids(&blocks, count)?;
++        ensure!(blocks.contains(&root), "the root {root} is not a block of the instance");
++        self.blocks = blocks;
 +        let parent_ready = (root.slot.checked_add(1).unwrap(), root.to_block());
 +        self.tracker = Some(ParentReadyTracker::new(
 +            self.cluster_info.clone(),
@@ -672,7 +812,21 @@ index 0000000..e45f386
 +        self.slots = (root.slot, last);
 +        self.events.clear();
 +        self.panicked = false;
++        self.note(format_args!(
++            "call:  ParentReadyTracker::new(root = {}, parent ready = ({}, {root}))",
++            root.slot,
++            root.slot.saturating_add(1)
++        ));
 +        self.leader_before = self.ask_leader()?;
++        Ok(())
++    }
++
++    /// A block named by a step must be one of the instance's blocks.
++    fn known(&self, block: QBlock) -> Result {
++        ensure!(
++            self.blocks.contains(&block),
++            "the step names {block}, which is not a block of the instance"
++        );
 +        Ok(())
 +    }
 +
@@ -698,11 +852,14 @@ index 0000000..e45f386
 +    /// would have stopped.
 +    fn call(
 +        &mut self,
++        what: String,
 +        f: impl FnOnce(&mut ParentReadyTracker, &mut Vec<VotorEvent>),
 +    ) -> Result {
 +        if self.panicked {
++            self.note(format_args!("call:  {what} not made, the tracker has panicked"));
 +            return Ok(());
 +        }
++        self.note(format_args!("call:  {what}"));
 +        let tracker = self
 +            .tracker
 +            .as_mut()
@@ -710,32 +867,46 @@ index 0000000..e45f386
 +        let mut emitted = vec![];
 +        if catch_unwind(AssertUnwindSafe(|| f(tracker, &mut emitted))).is_err() {
 +            self.panicked = true;
++            self.note("       the call panicked");
 +            return Ok(());
 +        }
++        let mut returned = vec![];
 +        for event in emitted {
 +            let VotorEvent::ParentReady { slot, parent_block } = event else {
 +                bail!("the tracker emitted an event that is not ParentReady")
 +            };
-+            self.events.push(QEvent {
++            returned.push(QEvent {
 +                slot,
 +                parent: QBlock::from_block(&parent_block)?,
 +            });
 +        }
++        self.note(format_args!(
++            "       events returned, in the tracker's order: {}",
++            list(returned.iter().map(|event| format!("{} <- {}", event.slot, event.parent)))
++        ));
++        self.events.extend(returned);
 +        Ok(())
 +    }
 +
 +    fn certified(&mut self, block: QBlock) -> Result {
-+        self.call(|tracker, events| {
-+            tracker.add_new_notar_fallback_or_stronger(block.to_block(), events)
-+        })
++        self.known(block)?;
++        self.call(
++            format!("add_new_notar_fallback_or_stronger({block})"),
++            |tracker, events| tracker.add_new_notar_fallback_or_stronger(block.to_block(), events),
++        )
 +    }
 +
 +    fn skip(&mut self, slot: Slot) -> Result {
-+        self.call(|tracker, events| tracker.add_new_skip(slot, events))
++        self.call(format!("add_new_skip({slot})"), |tracker, events| {
++            tracker.add_new_skip(slot, events)
++        })
 +    }
 +
 +    fn root(&mut self, block: QBlock) -> Result {
-+        self.call(|tracker, _| tracker.set_root(block.slot))
++        self.known(block)?;
++        self.call(format!("set_root({})", block.slot), |tracker, _| {
++            tracker.set_root(block.slot)
++        })
 +    }
 +}
 +
@@ -745,21 +916,48 @@ index 0000000..e45f386
 +    fn step(&mut self, step: &Step) -> Result {
 +        // Before any action but the first, record what each slot's leader
 +        // would be told. The model records the same in `leaderBefore`.
-+        if self.tracker.is_some() && !self.panicked && !step.action_taken.starts_with("init") {
++        let first = step.action_taken.starts_with("init");
++        if self.tracker.is_some() && !self.panicked && !first {
 +            self.leader_before = self.ask_leader()?;
++        }
++        if first {
++            self.trace_no = self.trace_no.saturating_add(1);
++            self.step_no = 0;
++        } else {
++            self.step_no = self.step_no.saturating_add(1);
++        }
++        if trace_level() > 0 {
++            if first {
++                eprintln!(
++                    "\n== trace {}. Blocks are written slot.id; the id stands in for the \
++                     32-byte block hash.",
++                    self.trace_no
++                );
++            }
++            eprintln!(
++                "\n[trace {} step {}] model action: {}",
++                self.trace_no, self.step_no, step.action_taken
++            );
++            if matches!(step.action_taken.as_str(), "certify" | "skipSlot" | "finalize") {
++                eprintln!("  call:  none (the network produced something the node has not seen)");
++            }
 +        }
 +        switch!(step {
 +            // start of a trace
-+            initC(root: QBlock, last: Slot) => self.init(root, last)?,
-+            initRandomIdsC(root: QBlock, last: Slot) => self.init(root, last)?,
++            initC(root: QBlock, last: Slot, blocks: BTreeSet<QBlock>, count: usize) => {
++                self.init(root, last, blocks, count)?
++            },
++            initRandomIdsC(root: QBlock, last: Slot, blocks: BTreeSet<QBlock>, count: usize) => {
++                self.init(root, last, blocks, count)?
++            },
 +            // the node receives a certificate, or moves its root
 +            deliverCertified(b: QBlock) => self.certified(b)?,
 +            deliverSkip(s: Slot) => self.skip(s)?,
 +            advanceRoot(b: QBlock) => self.root(b)?,
 +            // the same three calls, with any argument (stepRaw)
-+            rawCertified(b: QBlock) => self.certified(b)?,
-+            rawSkip(s: Slot) => self.skip(s)?,
-+            rawRoot(b: QBlock) => self.root(b)?,
++            nodeCertified(b: QBlock) => self.certified(b)?,
++            nodeSkip(s: Slot) => self.skip(s)?,
++            nodeRoot(b: QBlock) => self.root(b)?,
 +            // the network produces something; the node has not seen it yet
 +            certify => (),
 +            skipSlot => (),
@@ -772,8 +970,21 @@ index 0000000..e45f386
 +// The tests: which instance of the model, and how many random runs
 +// ---------------------------------------------------------------------------
 +
-+/// Any call sequence, no assumptions. Includes a root without a certificate
-+/// and, in some runs, the fifth-block panic.
++/// One short trace, for reading with `AG_TRACE=1`.
++#[quint_run(
++    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    main = "c_raw_small",
++    init = "initC",
++    step = "stepRaw",
++    max_samples = 1,
++    max_steps = 20
++)]
++fn one_short_trace() -> impl Driver {
++    TrackerDriver::new()
++}
++
++/// Any call sequence, no assumptions, four blocks per slot: slots fill up to
++/// the limit, the root moves without a certificate, and nothing panics.
 +#[quint_run(
 +    spec = "/opt/ag-model/spec/tracker_connect.qnt",
 +    main = "c_raw",
@@ -786,15 +997,16 @@ index 0000000..e45f386
 +    TrackerDriver::new()
 +}
 +
-+/// Any call sequence on only three slots, so that five blocks of one slot
-+/// arrive often: the test that exercises the panic.
++/// Any call sequence on only three slots with five blocks each: a fifth block
++/// of one slot arrives in most runs. This is the test that exercises the
++/// panic. Traces are short because nothing happens after a panic.
 +#[quint_run(
 +    spec = "/opt/ag-model/spec/tracker_connect.qnt",
 +    main = "c_raw_small",
 +    init = "initC",
 +    step = "stepRaw",
-+    max_samples = 200,
-+    max_steps = 60
++    max_samples = 400,
++    max_steps = 20
 +)]
 +fn raw_calls_small() -> impl Driver {
 +    TrackerDriver::new()
