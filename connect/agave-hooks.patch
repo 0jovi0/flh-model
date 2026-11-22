@@ -1,0 +1,904 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index 95fcce3..fd9fdf1 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -563,15 +563,19 @@ dependencies = [
+  "agave-votor",
+  "agave-votor-messages",
+  "agave-votor-transport",
++ "anyhow",
+  "arc-swap",
+  "bitvec",
+  "bytes",
+  "crossbeam-channel",
+  "derive_more 2.1.1",
+  "itertools 0.15.0",
++ "itf",
+  "log",
+  "parking_lot 0.12.5",
++ "quint-connect",
+  "rand 0.9.4",
++ "serde",
+  "smallvec",
+  "solana-bls-signatures",
+  "solana-clock",
+@@ -1975,6 +1979,15 @@ version = "1.0.3"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
+ 
++[[package]]
++name = "colored"
++version = "3.1.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "faf9468729b8cbcea668e36183cb69d317348c2e08e994829fb56ebfdfbaac34"
++dependencies = [
++ "windows-sys 0.61.0",
++]
++
+ [[package]]
+ name = "combine"
+ version = "3.8.1"
+@@ -2472,6 +2485,27 @@ dependencies = [
+  "serde",
+ ]
+ 
++[[package]]
++name = "dashu-base"
++version = "0.4.3"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "993b95dc1b248e3f5747dcb017a41d6e75853a2e5ee4504f7d537c5b8dffdae4"
++
++[[package]]
++name = "dashu-int"
++version = "0.4.3"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "49c05a0d5cb0b39fcc87c46432fdac24b90dce239857c7f6b798be4ffc3c42c6"
++dependencies = [
++ "cfg-if 1.0.5",
++ "dashu-base",
++ "num-modular",
++ "num-order",
++ "rustversion",
++ "serde",
++ "static_assertions",
++]
++
+ [[package]]
+ name = "data-encoding"
+ version = "2.3.2"
+@@ -2495,6 +2529,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "ececcb659e7ba858fb4f10388c250a7252eb0a27373f1a72b8748afdd248e587"
+ dependencies = [
+  "powerfmt",
++ "serde_core",
+ ]
+ 
+ [[package]]
+@@ -2667,6 +2702,12 @@ version = "0.11.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "1435fa1053d8b2fbbe9be7e97eca7f33d37b28409959813daefc1446a14247f1"
+ 
++[[package]]
++name = "dyn-clone"
++version = "1.0.20"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
++
+ [[package]]
+ name = "eager"
+ version = "0.1.0"
+@@ -3952,6 +3993,7 @@ checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
+ dependencies = [
+  "autocfg",
+  "hashbrown 0.12.3",
++ "serde",
+ ]
+ 
+ [[package]]
+@@ -3963,6 +4005,8 @@ dependencies = [
+  "equivalent",
+  "hashbrown 0.17.1",
+  "rayon",
++ "serde",
++ "serde_core",
+ ]
+ 
+ [[package]]
+@@ -4065,6 +4109,18 @@ dependencies = [
+  "either",
+ ]
+ 
++[[package]]
++name = "itf"
++version = "0.4.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "5d620b7b3d17650581da9208d1240baaff4ee33decff1c7782bdb9b4cab71c20"
++dependencies = [
++ "dashu-int",
++ "serde",
++ "serde_json",
++ "serde_with",
++]
++
+ [[package]]
+ name = "itoa"
+ version = "1.0.9"
+@@ -4078,10 +4134,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "1a3546dc96b6d42c5f24902af9e2538e82e39ad350b0c766eb3fbf2d8f3d8359"
+ dependencies = [
+  "jiff-static",
++ "jiff-tzdb-platform",
+  "log",
+  "portable-atomic",
+  "portable-atomic-util",
+  "serde_core",
++ "windows-sys 0.61.0",
+ ]
+ 
+ [[package]]
+@@ -4095,6 +4153,21 @@ dependencies = [
+  "syn 2.0.117",
+ ]
+ 
++[[package]]
++name = "jiff-tzdb"
++version = "0.1.10"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "0980fca2cc272465bd60e82397607ba9f33add9e48defd77923301bbd03808f2"
++
++[[package]]
++name = "jiff-tzdb-platform"
++version = "0.1.3"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "875a5a69ac2bab1a891711cf5eccbec1ce0341ea805560dcd90b7a2e925132e8"
++dependencies = [
++ "jiff-tzdb",
++]
++
+ [[package]]
+ name = "jni"
+ version = "0.22.4"
+@@ -4888,6 +4961,21 @@ dependencies = [
+  "num-traits",
+ ]
+ 
++[[package]]
++name = "num-modular"
++version = "0.6.5"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "bd8e500409e6cd603b03e477c26a6caecdc27ac58979a53e881c75eafc079f44"
++
++[[package]]
++name = "num-order"
++version = "1.2.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "537b596b97c40fcf8056d153049eb22f481c17ebce72a513ec9286e4986d1bb6"
++dependencies = [
++ "num-modular",
++]
++
+ [[package]]
+ name = "num-traits"
+ version = "0.2.19"
+@@ -5778,6 +5866,35 @@ dependencies = [
+  "windows-sys 0.61.0",
+ ]
+ 
++[[package]]
++name = "quint-connect"
++version = "0.1.2"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "67a4e156a3d4580b73eff41805d3237c909f96388158b3eed12afaa4f619d61c"
++dependencies = [
++ "anyhow",
++ "colored",
++ "itf",
++ "quint-connect-macros",
++ "rand 0.9.4",
++ "serde",
++ "serde_json",
++ "similar",
++ "tempfile",
++ "version_check",
++]
++
++[[package]]
++name = "quint-connect-macros"
++version = "0.1.2"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "814c6e076fa655b78d7127fda492f3fa980b8827fda16c33d891b57c8ccd735f"
++dependencies = [
++ "proc-macro2",
++ "quote",
++ "syn 2.0.117",
++]
++
+ [[package]]
+ name = "quote"
+ version = "1.0.47"
+@@ -6043,6 +6160,26 @@ dependencies = [
+  "spin",
+ ]
+ 
++[[package]]
++name = "ref-cast"
++version = "1.0.27"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "7e440fb4e4b4147295338efb76001ab9e4efc0e5839df2c47fc5ac2381d365c3"
++dependencies = [
++ "ref-cast-impl",
++]
++
++[[package]]
++name = "ref-cast-impl"
++version = "1.0.27"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "92ecd8964f8453721699a1ed72037b0db49ce2f5a5138486ee89bed6f67cdf3a"
++dependencies = [
++ "proc-macro2",
++ "quote",
++ "syn 3.0.6",
++]
++
+ [[package]]
+ name = "regex"
+ version = "1.13.1"
+@@ -6434,6 +6571,30 @@ dependencies = [
+  "winapi",
+ ]
+ 
++[[package]]
++name = "schemars"
++version = "0.9.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "4cd191f9397d57d581cddd31014772520aa448f65ef991055d7f61582c65165f"
++dependencies = [
++ "dyn-clone",
++ "ref-cast",
++ "serde",
++ "serde_json",
++]
++
++[[package]]
++name = "schemars"
++version = "1.2.3"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "ab508826f74a77ca9d5aba6ff19b522583ee3eaf28a19384ff3d0e5835fadf6e"
++dependencies = [
++ "dyn-clone",
++ "ref-cast",
++ "serde",
++ "serde_json",
++]
++
+ [[package]]
+ name = "scoped-tls"
+ version = "1.0.1"
+@@ -6613,8 +6774,19 @@ version = "3.23.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "935177bb8c0cd8ca1a4e6d1a2ac8988bea69cab4f9d3a31311e012ad27868ea4"
+ dependencies = [
++ "base64 0.23.1",
++ "bs58",
++ "chrono",
++ "hex",
++ "indexmap 1.9.3",
++ "indexmap 2.14.2",
++ "jiff",
++ "schemars 0.9.0",
++ "schemars 1.2.3",
+  "serde_core",
++ "serde_json",
+  "serde_with_macros",
++ "time",
+ ]
+ 
+ [[package]]
+@@ -6914,6 +7086,12 @@ version = "0.1.5"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
+ 
++[[package]]
++name = "similar"
++version = "2.7.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
++
+ [[package]]
+ name = "simpl"
+ version = "0.1.0"
+@@ -12465,10 +12643,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "743bd48c283afc0388f9b8827b976905fb217ad9e647fae3a379a9283c4def2c"
+ dependencies = [
+  "deranged",
++ "itoa",
+  "num-conv",
+  "powerfmt",
+  "serde_core",
+  "time-core",
++ "time-macros",
+ ]
+ 
+ [[package]]
+@@ -12477,6 +12657,16 @@ version = "0.1.8"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "7694e1cfe791f8d31026952abf09c69ca6f6fa4e1a1229e18988f06a04a12dca"
+ 
++[[package]]
++name = "time-macros"
++version = "0.2.27"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "2e70e4c5a0e0a8a4823ad65dfe1a6930e4f4d756dcd9dd7939022b5e8c501215"
++dependencies = [
++ "num-conv",
++ "time-core",
++]
++
+ [[package]]
+ name = "tinystr"
+ version = "0.7.6"
+diff --git a/votor/Cargo.toml b/votor/Cargo.toml
+index a6dcff2..5d5aca4 100644
+--- a/votor/Cargo.toml
++++ b/votor/Cargo.toml
+@@ -74,7 +74,12 @@ tokio = { workspace = true, features = ["sync", "rt"] }
+ wincode = { workspace = true, features = ["alloc"] }
+ 
+ [dev-dependencies]
++# ag-model hook: anyhow, itf, quint-connect and serde are for the Quint Connect driver
+ agave-votor = { path = ".", features = ["dev-context-only-utils"] }
++anyhow = { workspace = true }
++itf = "0.4"
++quint-connect = "0.1.2"
++serde = { workspace = true }
+ agave-votor-transport = { path = "../votor-transport", features = ["agave-unstable-api", "dev-context-only-utils"] }
+ rand = { workspace = true }
+ solana-net-utils = { path = "../net-utils", features = ["agave-unstable-api"] }
+diff --git a/votor/src/consensus_pool/parent_ready_tracker.rs b/votor/src/consensus_pool/parent_ready_tracker.rs
+index 1c9f2dc..1804807 100644
+--- a/votor/src/consensus_pool/parent_ready_tracker.rs
++++ b/votor/src/consensus_pool/parent_ready_tracker.rs
+@@ -541,3 +541,7 @@ mod tests {
+         );
+     }
+ }
++
++// ag-model hook: Quint Connect driver.
++#[cfg(test)]
++mod quint_connect;
+diff --git a/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs b/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs
+new file mode 100644
+index 0000000..e45f386
+--- /dev/null
++++ b/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs
+@@ -0,0 +1,530 @@
++//! ag-model hook.
++//!
++//! Model-based test of `ParentReadyTracker` against the Quint model in
++//! `/opt/ag-model/spec` (`tracker.qnt`, wrapped by `tracker_connect.qnt`).
++//!
++//! How one test below works:
++//!
++//! 1. `#[quint_run]` runs `quint run --mbt` on one instance of the model.
++//!    Quint writes every random run as a trace: a list of states, each tagged
++//!    with the action that produced it and the values that action picked.
++//! 2. For every state of every trace, [`TrackerDriver::step`] gets the action
++//!    name and its picks and makes the matching call on the Rust tracker.
++//! 3. After each step a [`View`] is built twice: from the model's state in
++//!    the trace ([`State::from_spec`]) and from the Rust tracker
++//!    ([`State::from_driver`]). If the two differ, the test fails and prints
++//!    the diff and the seed.
++//!
++//! This is a child module of the tracker, so it reads the tracker's private
++//! fields directly.
++//!
++//! Run from `/opt/ag-model/agave`:
++//!   `/opt/ag-model/t test -p agave-votor --features agave-unstable-api --lib quint_connect`
++//!
++//! A failure prints `Reproduce this error with QUINT_SEED=<seed>`; put that
++//! variable in front of the same command to replay the same traces.
++
++// Named imports, not `super::*`: a glob would bring this module's own name
++// into scope, where it would clash with the `quint_connect` crate.
++use {
++    super::{
++        Arc, Block, BlockProductionParent, ClusterInfo, ParentReadyTracker, Slot, VotorEvent,
++    },
++    crate::tests::get_cluster_info,
++    agave_votor_messages::consensus_message::BlockId,
++    anyhow::{anyhow, bail, ensure},
++    itf::{value::Record, Value},
++    quint_connect::*,
++    serde::{de::DeserializeOwned, Deserialize},
++    solana_hash::Hash,
++    solana_keypair::Keypair,
++    std::{
++        collections::{BTreeMap, BTreeSet},
++        panic::{catch_unwind, AssertUnwindSafe},
++    },
++};
++
++// ---------------------------------------------------------------------------
++// The model's values, as they appear in a trace
++// ---------------------------------------------------------------------------
++
++/// A block as the model names it: a slot and a small numeric id.
++#[derive(Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
++struct QBlock {
++    slot: Slot,
++    id: u64,
++}
++
++impl QBlock {
++    /// The real block for a model block. The id goes big-endian into the last
++    /// 8 bytes of the 32-byte hash, so real blocks sort like model
++    /// blocks (slot first, then id) and `min()` picks the same one.
++    fn to_block(self) -> Block {
++        let mut bytes = [0u8; 32];
++        bytes[24..].copy_from_slice(&self.id.to_be_bytes());
++        Block {
++            slot: self.slot,
++            block_id: BlockId::from(Hash::new_from_array(bytes)),
++        }
++    }
++
++    fn from_block(block: &Block) -> Result<Self> {
++        let bytes = block.block_id.as_bytes();
++        ensure!(
++            bytes[..24].iter().all(|byte| *byte == 0),
++            "block id was not made by this driver: {block:?}"
++        );
++        let mut id = [0u8; 8];
++        id.copy_from_slice(&bytes[24..]);
++        Ok(Self {
++            slot: block.slot,
++            id: u64::from_be_bytes(id),
++        })
++    }
++}
++
++/// What the tracker knows about one slot (`Status` in the model,
++/// `ParentReadyStatus` in the Rust).
++#[derive(Deserialize, Debug, Default, PartialEq, Eq)]
++struct QStatus {
++    skip: bool,
++    certified: BTreeSet<QBlock>,
++    parents: BTreeSet<QBlock>,
++}
++
++/// A ParentReady event.
++#[derive(Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
++struct QEvent {
++    slot: Slot,
++    parent: QBlock,
++}
++
++/// What a leader is told (`Choice` in the model, `BlockProductionParent` in
++/// the Rust).
++#[derive(Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
++#[serde(tag = "tag", content = "value")]
++enum QChoice {
++    MissedWindow,
++    ParentNotReady,
++    Parent(QBlock),
++}
++
++/// The model's tracker record (`tr`).
++#[derive(Deserialize, Debug)]
++struct QTracker {
++    st: BTreeMap<Slot, QStatus>,
++    root: Slot,
++    highest: Slot,
++    events: Vec<QEvent>,
++    panicked: bool,
++}
++
++// ---------------------------------------------------------------------------
++// What is compared after every step
++// ---------------------------------------------------------------------------
++
++/// The state both sides are reduced to before they are compared.
++#[derive(Debug, Default, PartialEq, Eq)]
++struct View {
++    /// The fifth-block assert fired. Once it has, nothing else is compared:
++    /// the real process would be dead, and the Rust has already pushed the
++    /// block the model refused.
++    panicked: bool,
++    root: Slot,
++    highest: Slot,
++    /// Per slot. A slot with nothing recorded is left out on both sides (the
++    /// model keeps an empty entry for every slot, the Rust keeps a sparse map).
++    st: BTreeMap<Slot, QStatus>,
++    /// Every ParentReady event emitted so far, sorted. Equal at every step
++    /// means each call emitted the same events; the order inside one call is
++    /// not compared.
++    events: Vec<QEvent>,
++    /// What the leader of each slot would have been told just before this
++    /// step.
++    leader_before: BTreeMap<Slot, QChoice>,
++}
++
++impl View {
++    fn dead() -> Self {
++        Self {
++            panicked: true,
++            ..Self::default()
++        }
++    }
++}
++
++/// Reads the model variable whose name ends in `suffix`. In a trace the
++/// variables are named `<instance>::tracker_connect::<name>`.
++fn var<T: DeserializeOwned>(vars: &Record, suffix: &str) -> Result<T> {
++    let mut found = vars.iter().filter(|(name, _)| name.ends_with(suffix));
++    let (_, value) = found
++        .next()
++        .ok_or_else(|| anyhow!("no model variable ending in {suffix}"))?;
++    ensure!(found.next().is_none(), "several model variables end in {suffix}");
++    Ok(T::deserialize(value.clone())?)
++}
++
++impl State<TrackerDriver> for View {
++    /// The view of the model's state in the trace.
++    fn from_spec(value: Value) -> Result<Self> {
++        let Value::Record(vars) = value else {
++            bail!("the model state is not a record")
++        };
++        let tr: QTracker = var(&vars, "::tr")?;
++        if tr.panicked {
++            return Ok(Self::dead());
++        }
++        let mut events = tr.events;
++        events.sort();
++        Ok(Self {
++            panicked: false,
++            root: tr.root,
++            highest: tr.highest,
++            st: tr
++                .st
++                .into_iter()
++                .filter(|(_, status)| *status != QStatus::default())
++                .collect(),
++            events,
++            leader_before: var(&vars, "::leaderBefore")?,
++        })
++    }
++
++    /// The view of the Rust tracker.
++    fn from_driver(driver: &TrackerDriver) -> Result<Self> {
++        if driver.panicked {
++            return Ok(Self::dead());
++        }
++        let tracker = driver.tracker()?;
++        let mut st = BTreeMap::new();
++        for (slot, status) in &tracker.slot_statuses {
++            let certified = to_set(&status.notar_fallbacks)?;
++            let parents = to_set(&status.parents_ready)?;
++            // Checks the model cannot express, because it keeps sets.
++            ensure!(
++                certified.len() == status.notar_fallbacks.len(),
++                "duplicate block in notar_fallbacks of slot {slot}: {:?}",
++                status.notar_fallbacks
++            );
++            ensure!(
++                parents.len() == status.parents_ready.len(),
++                "duplicate block in parents_ready of slot {slot}: {:?}",
++                status.parents_ready
++            );
++            for block in &status.notar_fallbacks {
++                ensure!(
++                    tracker.has_notar_fallback_or_stronger(*block),
++                    "has_notar_fallback_or_stronger denies {block:?}"
++                );
++            }
++            let status = QStatus {
++                skip: status.skip,
++                certified,
++                parents,
++            };
++            if status != QStatus::default() {
++                st.insert(*slot, status);
++            }
++        }
++        let mut events = driver.events.clone();
++        events.sort();
++        Ok(Self {
++            panicked: false,
++            root: tracker.root,
++            highest: tracker.highest_with_parent_ready,
++            st,
++            events,
++            leader_before: driver.leader_before.clone(),
++        })
++    }
++}
++
++fn to_set(blocks: &[Block]) -> Result<BTreeSet<QBlock>> {
++    blocks.iter().map(QBlock::from_block).collect()
++}
++
++/// quint-connect requires the trait, but reads the model state through
++/// `from_spec` above, which picks the variables it needs.
++impl<'de> Deserialize<'de> for View {
++    fn deserialize<D: serde::Deserializer<'de>>(_: D) -> std::result::Result<Self, D::Error> {
++        Err(serde::de::Error::custom("View is read with from_spec"))
++    }
++}
++
++// ---------------------------------------------------------------------------
++// The driver: one trace step -> one call on the Rust tracker
++// ---------------------------------------------------------------------------
++
++struct TrackerDriver {
++    cluster_info: Arc<ClusterInfo>,
++    /// The tracker under test; a new one at the start of every trace.
++    tracker: Option<ParentReadyTracker>,
++    /// First and last slot of the model instance.
++    slots: (Slot, Slot),
++    /// Every ParentReady event the tracker has emitted in this trace.
++    events: Vec<QEvent>,
++    /// A call hit the tracker's assert.
++    panicked: bool,
++    leader_before: BTreeMap<Slot, QChoice>,
++}
++
++impl TrackerDriver {
++    fn new() -> Self {
++        Self {
++            cluster_info: get_cluster_info(Keypair::new()),
++            tracker: None,
++            slots: (0, 0),
++            events: vec![],
++            panicked: false,
++            leader_before: BTreeMap::new(),
++        }
++    }
++
++    fn tracker(&self) -> Result<&ParentReadyTracker> {
++        self.tracker
++            .as_ref()
++            .ok_or_else(|| anyhow!("the trace did not start with an init action"))
++    }
++
++    /// Start of a trace: a fresh tracker rooted at `root`, as the model's
++    /// `newTracker` (root block certified, ready parent for the next slot).
++    fn init(&mut self, root: QBlock, last: Slot) -> Result {
++        let parent_ready = (root.slot.checked_add(1).unwrap(), root.to_block());
++        self.tracker = Some(ParentReadyTracker::new(
++            self.cluster_info.clone(),
++            root.slot,
++            parent_ready,
++        ));
++        self.slots = (root.slot, last);
++        self.events.clear();
++        self.panicked = false;
++        self.leader_before = self.ask_leader()?;
++        Ok(())
++    }
++
++    /// `block_production_parent` for every slot of the instance.
++    fn ask_leader(&self) -> Result<BTreeMap<Slot, QChoice>> {
++        let tracker = self.tracker()?;
++        (self.slots.0..=self.slots.1)
++            .map(|slot| {
++                let choice = match tracker.block_production_parent(slot) {
++                    BlockProductionParent::MissedWindow => QChoice::MissedWindow,
++                    BlockProductionParent::ParentNotReady => QChoice::ParentNotReady,
++                    BlockProductionParent::Parent(block) => {
++                        QChoice::Parent(QBlock::from_block(&block)?)
++                    }
++                };
++                Ok((slot, choice))
++            })
++            .collect()
++    }
++
++    /// One call on the tracker. A panic inside the call is caught and
++    /// remembered; after it no further call is made, as the real process
++    /// would have stopped.
++    fn call(
++        &mut self,
++        f: impl FnOnce(&mut ParentReadyTracker, &mut Vec<VotorEvent>),
++    ) -> Result {
++        if self.panicked {
++            return Ok(());
++        }
++        let tracker = self
++            .tracker
++            .as_mut()
++            .ok_or_else(|| anyhow!("the trace did not start with an init action"))?;
++        let mut emitted = vec![];
++        if catch_unwind(AssertUnwindSafe(|| f(tracker, &mut emitted))).is_err() {
++            self.panicked = true;
++            return Ok(());
++        }
++        for event in emitted {
++            let VotorEvent::ParentReady { slot, parent_block } = event else {
++                bail!("the tracker emitted an event that is not ParentReady")
++            };
++            self.events.push(QEvent {
++                slot,
++                parent: QBlock::from_block(&parent_block)?,
++            });
++        }
++        Ok(())
++    }
++
++    fn certified(&mut self, block: QBlock) -> Result {
++        self.call(|tracker, events| {
++            tracker.add_new_notar_fallback_or_stronger(block.to_block(), events)
++        })
++    }
++
++    fn skip(&mut self, slot: Slot) -> Result {
++        self.call(|tracker, events| tracker.add_new_skip(slot, events))
++    }
++
++    fn root(&mut self, block: QBlock) -> Result {
++        self.call(|tracker, _| tracker.set_root(block.slot))
++    }
++}
++
++impl Driver for TrackerDriver {
++    type State = View;
++
++    fn step(&mut self, step: &Step) -> Result {
++        // Before any action but the first, record what each slot's leader
++        // would be told. The model records the same in `leaderBefore`.
++        if self.tracker.is_some() && !self.panicked && !step.action_taken.starts_with("init") {
++            self.leader_before = self.ask_leader()?;
++        }
++        switch!(step {
++            // start of a trace
++            initC(root: QBlock, last: Slot) => self.init(root, last)?,
++            initRandomIdsC(root: QBlock, last: Slot) => self.init(root, last)?,
++            // the node receives a certificate, or moves its root
++            deliverCertified(b: QBlock) => self.certified(b)?,
++            deliverSkip(s: Slot) => self.skip(s)?,
++            advanceRoot(b: QBlock) => self.root(b)?,
++            // the same three calls, with any argument (stepRaw)
++            rawCertified(b: QBlock) => self.certified(b)?,
++            rawSkip(s: Slot) => self.skip(s)?,
++            rawRoot(b: QBlock) => self.root(b)?,
++            // the network produces something; the node has not seen it yet
++            certify => (),
++            skipSlot => (),
++            finalize => (),
++        })
++    }
++}
++
++// ---------------------------------------------------------------------------
++// The tests: which instance of the model, and how many random runs
++// ---------------------------------------------------------------------------
++
++/// Any call sequence, no assumptions. Includes a root without a certificate
++/// and, in some runs, the fifth-block panic.
++#[quint_run(
++    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    main = "c_raw",
++    init = "initC",
++    step = "stepRaw",
++    max_samples = 200,
++    max_steps = 60
++)]
++fn raw_calls() -> impl Driver {
++    TrackerDriver::new()
++}
++
++/// Any call sequence on only three slots, so that five blocks of one slot
++/// arrive often: the test that exercises the panic.
++#[quint_run(
++    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    main = "c_raw_small",
++    init = "initC",
++    step = "stepRaw",
++    max_samples = 200,
++    max_steps = 60
++)]
++fn raw_calls_small() -> impl Driver {
++    TrackerDriver::new()
++}
++
++/// Any certificates in any order, no chains.
++#[quint_run(
++    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    main = "c_free",
++    init = "initC",
++    step = "stepC",
++    max_samples = 200,
++    max_steps = 60
++)]
++fn free_certificates() -> impl Driver {
++    TrackerDriver::new()
++}
++
++/// Chains, with the root starting at each position inside a window.
++#[quint_run(
++    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    main = "c_n100",
++    init = "initC",
++    step = "stepC",
++    max_samples = 200,
++    max_steps = 60
++)]
++fn chain_root_100() -> impl Driver {
++    TrackerDriver::new()
++}
++
++#[quint_run(
++    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    main = "c_n101",
++    init = "initC",
++    step = "stepC",
++    max_samples = 200,
++    max_steps = 60
++)]
++fn chain_root_101() -> impl Driver {
++    TrackerDriver::new()
++}
++
++#[quint_run(
++    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    main = "c_n102",
++    init = "initC",
++    step = "stepC",
++    max_samples = 200,
++    max_steps = 60
++)]
++fn chain_root_102() -> impl Driver {
++    TrackerDriver::new()
++}
++
++#[quint_run(
++    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    main = "c_n103",
++    init = "initC",
++    step = "stepC",
++    max_samples = 200,
++    max_steps = 60
++)]
++fn chain_root_103() -> impl Driver {
++    TrackerDriver::new()
++}
++
++/// Five blocks per slot: slots fill up to the limit of four certified blocks.
++#[quint_run(
++    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    main = "c_b5",
++    init = "initC",
++    step = "stepC",
++    max_samples = 200,
++    max_steps = 60
++)]
++fn chain_full_slots() -> impl Driver {
++    TrackerDriver::new()
++}
++
++/// Finalization facts not assumed. The model's chain properties fail here,
++/// but the two trackers must still agree.
++#[quint_run(
++    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    main = "c_nofinal",
++    init = "initC",
++    step = "stepC",
++    max_samples = 200,
++    max_steps = 60
++)]
++fn chain_without_final_facts() -> impl Driver {
++    TrackerDriver::new()
++}
++
++/// Block ids that change with the seed, so which block of a slot is the
++/// smaller one varies from run to run.
++#[quint_run(
++    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    main = "c_n101",
++    init = "initRandomIdsC",
++    step = "stepC",
++    max_samples = 200,
++    max_steps = 60
++)]
++fn chain_random_ids() -> impl Driver {
++    TrackerDriver::new()
++}
