@@ -11,6 +11,7 @@ tracker against it.
 | `spec/parentready.qnt` | Constants, types, block ids, the definition of ParentReady |
 | `spec/tracker.qnt` | The Rust tracker copied into Quint, a driver (network + one node), the properties, instances, replayed Rust unit tests |
 | `spec/tracker_connect.qnt` | Trace source for the comparison with the Rust; wraps `tracker.qnt` |
+| `spec/tracker_pragmatic.qnt` | The same model moving only forward: no work on passed slots, no repeats; wraps `tracker.qnt` |
 | `agave/` | A copy of Agave at the pinned commit plus the test-only hooks. Not tracked here; rebuilt by `connect/setup.sh` |
 | `connect/agave-hooks.patch` | Edits to Agave: the driver and three hooks |
 | `connect/setup.sh` | Recreates `agave/` from the tag and the patch |
@@ -59,6 +60,21 @@ needs about 8 GB of disk.
 - **Instances.** `tr_n100`..`tr_n103` (root at each position in a window), `tr_b5`,
   `tr_w2`, `tr_free` (no chains), `tr_nofinal` (expected to fail `ALL`), `tr_tiny`
   (small enough for every state).
+
+## The pragmatic driver
+
+`spec/tracker_pragmatic.qnt` wraps `tracker.qnt` with a step, `stepPragmatic`, that
+leaves out what the tracker ignores: network activity and deliveries for slots at or
+below the node's root, and re-delivery of certificates the node already holds.
+
+It is a subset of the runs of `tracker.qnt`, so a violation found with it is a violation
+of the full model. A pass covers only forward-moving runs. Use it with both assumptions
+on.
+
+```
+./q run --main=prag_n101 --step=stepPragmatic --invariant=ALL --max-samples=3000 --max-steps=60 spec/tracker_pragmatic.qnt
+./q verify --backend=tlc --main=prag_w4 --step=stepPragmatic --invariant=ALL spec/tracker_pragmatic.qnt
+```
 
 ## The comparison with the Rust
 
