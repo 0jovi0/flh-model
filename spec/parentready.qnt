@@ -97,6 +97,8 @@ module parentready {
 
   // s is the first slot of a leader window.
   pure def first(s: Slot): bool = s % W == 0
+  // The first slot of the leader window that s is in.
+  pure def windowStart(s: Slot): Slot = s - s % W
 
   // Block order: slot first, then id.
   pure def le(a: Block, b: Block): bool =

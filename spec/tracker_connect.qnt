@@ -14,8 +14,9 @@
 //   ./q run --main=c_raw --init=initC --step=stepRaw --mbt --max-samples=1 \
 //       --max-steps=20 --out-itf=one.itf.json spec/tracker_connect.qnt
 module tracker_connect {
-  import tracker.* from "./tracker"
-  export tracker.*
+  // tracker_pragmatic.qnt is tracker.qnt plus the forward-only step.
+  import tracker_pragmatic.* from "./tracker_pragmatic"
+  export tracker_pragmatic.*
 
   // What block_production_parent answers for every slot, taken before the
   // step. The leader's answer is a pure function in the model, so without
@@ -69,7 +70,8 @@ module tracker_connect {
   // What would be new, above the node's root. A pick from an empty set
   // switches its branch off for that step.
   def newToNetwork: Set[Block] = BLOCKS.filter(b => b.slot > tr.root and not(wCerts.contains(b)))
-  def newSkipsForNetwork: Set[Slot] = FREE_SLOTS.filter(s => s > tr.root and not(wSkips.contains(s)))
+  def newSkipsForNetwork: Set[Slot] = FREE_SLOTS.filter(s =>
+    s > tr.root and not(wSkips.contains(s)) and (ASSUME_WINDOW implies windowOpen(s)))
   def notYetFinal: Set[Block] = wCerts.filter(b => b.slot > tr.root and not(wFinal.contains(b)))
   def undelivered: Set[Block] = wCerts.filter(b => b.slot > tr.root and not(certs.contains(b)))
   def undeliveredSkips: Set[Slot] = wSkips.filter(s => s > tr.root and not(skips.contains(s)))
@@ -109,6 +111,10 @@ module tracker_connect {
     },
     leaderBefore' = leaderNow,
   }
+
+  // The forward-only step of tracker_pragmatic.qnt: nothing for a slot at or
+  // below the node's root, and no certificate delivered twice.
+  action stepForward = all { stepPragmatic, leaderBefore' = leaderNow }
 
   // Any call sequence: no network and no assumptions. Any block is
   // handed to the tracker as certified, any slot as skipped, and the root
@@ -157,19 +163,19 @@ module tracker_connect {
 // Instances. The c_n*, c_b5, c_free and c_nofinal ones mirror the tr_*
 // instances of tracker.qnt and are run with stepC. The two trackers must
 // agree on c_nofinal too, where the chain properties fail.
-module c_n100 { import tracker_connect(W = 4, N = 100, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true).* }
-module c_n101 { import tracker_connect(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true).* }
-module c_n102 { import tracker_connect(W = 4, N = 102, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true).* }
-module c_n103 { import tracker_connect(W = 4, N = 103, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true).* }
-module c_b5 { import tracker_connect(W = 4, N = 101, SPAN = 5, BLOCKS_PER_SLOT = 5, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true).* }
-module c_free { import tracker_connect(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = false).* }
-module c_nofinal { import tracker_connect(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = false, ASSUME_CHAIN = true).* }
-// For stepRaw. The two assumptions play no part in it.
+module c_n100 { import tracker_connect(W = 4, N = 100, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true, ASSUME_WINDOW = true).* }
+module c_n101 { import tracker_connect(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true, ASSUME_WINDOW = true).* }
+module c_n102 { import tracker_connect(W = 4, N = 102, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true, ASSUME_WINDOW = true).* }
+module c_n103 { import tracker_connect(W = 4, N = 103, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true, ASSUME_WINDOW = true).* }
+module c_b5 { import tracker_connect(W = 4, N = 101, SPAN = 5, BLOCKS_PER_SLOT = 5, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true, ASSUME_WINDOW = true).* }
+module c_free { import tracker_connect(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = false, ASSUME_WINDOW = false).* }
+module c_nofinal { import tracker_connect(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = false, ASSUME_CHAIN = true, ASSUME_WINDOW = true).* }
+// For stepRaw. The assumptions play no part in it.
 // c_raw: four blocks per slot, so slots fill up to the limit but the tracker
 // never panics and every step of a trace counts.
-module c_raw { import tracker_connect(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 4, MAX_CERTIFIED = 4, ASSUME_FINAL = false, ASSUME_CHAIN = false).* }
+module c_raw { import tracker_connect(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 4, MAX_CERTIFIED = 4, ASSUME_FINAL = false, ASSUME_CHAIN = false, ASSUME_WINDOW = false).* }
 // c_raw_small: five blocks per slot on three slots, so a fifth block of one
 // slot arrives within 20 steps in most runs. This is the instance that
 // exercises the panic. After a panic the rest of a trace only checks that
 // nothing moves, so it is run with short traces.
-module c_raw_small { import tracker_connect(W = 4, N = 101, SPAN = 3, BLOCKS_PER_SLOT = 5, MAX_CERTIFIED = 4, ASSUME_FINAL = false, ASSUME_CHAIN = false).* }
+module c_raw_small { import tracker_connect(W = 4, N = 101, SPAN = 3, BLOCKS_PER_SLOT = 5, MAX_CERTIFIED = 4, ASSUME_FINAL = false, ASSUME_CHAIN = false, ASSUME_WINDOW = false).* }

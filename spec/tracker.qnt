@@ -28,10 +28,19 @@ module tracker {
   // ASSUME_CHAIN: a block is certified only on a valid parent. In the first
   //   slot of a window the parent must be a ready parent for that slot; in
   //   any other slot the parent must be a certified block of the slot before.
+  // ASSUME_WINDOW: a slot gets a Skip certificate only once its window is
+  //   open: the first slot of that window has a ready parent, or it is the
+  //   window the initial root sits in. In the code a node arms its skip timers
+  //   for a window when it sees a ParentReady for the window's first slot
+  //   (event_handler.rs:259, the only call of set_timeouts), and one timer
+  //   covers the rest of that window (timer_manager/timers.rs:88). Without a
+  //   timer a node votes skip only in reaction to other votes for that slot,
+  //   so a quorum of skip votes needs honest nodes whose window is open.
   // ASSUME_Q5 (always on): a slot never has more than MAX_CERTIFIED certified
   //   blocks.
   const ASSUME_FINAL: bool
   const ASSUME_CHAIN: bool
+  const ASSUME_WINDOW: bool
 
   // ------------------------------------------------------------------
   // The tracker, transcribed
@@ -217,11 +226,18 @@ module tracker {
     nodeSame,
   }
 
+  // The window of slot s is open: nodes can have skip timers running for it.
+  // Once open, a window stays open (certificates are never taken back).
+  def windowOpen(s: Slot): bool =
+    windowStart(s) <= N or readySet(wCerts, wSkips, windowStart(s)).size() > 0
+
   // Slot s gets a Skip certificate.
   action skipSlot(s: Slot): bool = all {
     not(wSkips.contains(s)),
     // ASSUME_FINAL: no Skip certificate for a finalized slot
     ASSUME_FINAL implies not(wFinal.exists(f => f.slot == s)),
+    // ASSUME_WINDOW: only in a window that is open
+    ASSUME_WINDOW implies windowOpen(s),
     wSkips' = wSkips.union(Set(s)),
     idSeed' = idSeed, wCerts' = wCerts, wFinal' = wFinal, parentOf' = parentOf, ancOf' = ancOf,
     nodeSame,
@@ -326,6 +342,7 @@ module tracker {
   //   10  noPanic                                   [assumption]
   //   11  certifiedOnEarlierCertified               [construction]
   //   12  finalizedOnOneChain                       [assumption]
+  //   13  skipOnlyInOpenWindow                      [construction]
   // Each is named prop<number>_<name>. IDS_DISTINCT is a check of the model's
   // id arithmetic, not a property of ParentReady, and has no number.
   // ------------------------------------------------------------------
@@ -447,6 +464,11 @@ module tracker {
       (if (first(b.slot)) ready(wCerts, wSkips, b.slot, parentOf.get(b))
        else parentOf.get(b).slot == b.slot - 1))
 
+  // prop13_skipOnlyInOpenWindow [construction]: every skip-certified slot lies
+  // in an open window. This is ASSUME_WINDOW read back from the state; it
+  // stays true later because a window never closes.
+  val prop13_skipOnlyInOpenWindow = wSkips.forall(s => windowOpen(s))
+
   // prop12_finalizedOnOneChain [assumption: ASSUME_CHAIN and ASSUME_FINAL]: finalized blocks lie on
   // one chain.
   val prop12_finalizedOnOneChain = wFinal.forall(f => wFinal.forall(g => anc(f).contains(g) or anc(g).contains(f)))
@@ -478,6 +500,7 @@ module tracker {
   // True by construction of the model.
   val BY_CONSTRUCTION = and {
     IDS_DISTINCT, prop7_coveredSlotHasReadyParent, prop11_certifiedOnEarlierCertified, prop5_certifiedOnValidParent,
+    prop13_skipOnlyInOpenWindow,
   }
   // True because of the assumptions about the network.
   val FROM_ASSUMPTIONS = and {
@@ -486,9 +509,9 @@ module tracker {
     prop4b_laterReadyParentsDescendFromFinalized, prop4c_readyParentsDescendFromRoot,
   }
 
-  // Everything; for instances with both assumptions on.
+  // Everything; for instances with all assumptions on.
   val ALL = and { TRACKER, BY_CONSTRUCTION, FROM_ASSUMPTIONS }
-  // Everything that does not need ASSUME_CHAIN; for tr_free.
+  // Everything that does not need ASSUME_CHAIN or ASSUME_WINDOW; for tr_free.
   val NO_CHAIN = and {
     TRACKER, IDS_DISTINCT, prop7_coveredSlotHasReadyParent, prop11_certifiedOnEarlierCertified,
     prop10_noPanic, prop8a_parentsNotBelowRoot, prop8b_rootSlotParentIsRootBlock, prop8c_leaderParentNotBelowRoot,
@@ -537,29 +560,29 @@ module tracker {
 }
 
 // Instances. The root starts at each position inside a window.
-module tr_n100 { import tracker(W = 4, N = 100, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true).* }
-module tr_n101 { import tracker(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true).* }
-module tr_n102 { import tracker(W = 4, N = 102, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true).* }
-module tr_n103 { import tracker(W = 4, N = 103, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true).* }
+module tr_n100 { import tracker(W = 4, N = 100, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true, ASSUME_WINDOW = true).* }
+module tr_n101 { import tracker(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true, ASSUME_WINDOW = true).* }
+module tr_n102 { import tracker(W = 4, N = 102, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true, ASSUME_WINDOW = true).* }
+module tr_n103 { import tracker(W = 4, N = 103, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true, ASSUME_WINDOW = true).* }
 // five blocks per slot, so the limit of 4 certified blocks is reached
-module tr_b5 { import tracker(W = 4, N = 101, SPAN = 5, BLOCKS_PER_SLOT = 5, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true).* }
+module tr_b5 { import tracker(W = 4, N = 101, SPAN = 5, BLOCKS_PER_SLOT = 5, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true, ASSUME_WINDOW = true).* }
 // two-slot windows
-module tr_w2 { import tracker(W = 2, N = 101, SPAN = 7, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true).* }
-// any certificates, no chains. Check NO_CHAIN here, not ALL.
-module tr_free { import tracker(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = false).* }
+module tr_w2 { import tracker(W = 2, N = 101, SPAN = 7, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true, ASSUME_WINDOW = true).* }
+// any certificates, no chains, skips in any slot. Check NO_CHAIN here, not ALL.
+module tr_free { import tracker(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = false, ASSUME_WINDOW = false).* }
 // the finalization facts not assumed. Checking ALL here is expected to fail
 // (the tracker, root and chain properties): it shows which properties depend
 // on ASSUME_FINAL.
-module tr_nofinal { import tracker(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = false, ASSUME_CHAIN = true).* }
+module tr_nofinal { import tracker(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = false, ASSUME_CHAIN = true, ASSUME_WINDOW = true).* }
 // small enough for the exhaustive checker
-module tr_tiny { import tracker(W = 2, N = 101, SPAN = 3, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true).* }
+module tr_tiny { import tracker(W = 2, N = 101, SPAN = 3, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true, ASSUME_WINDOW = true).* }
 
 // The tracker's own unit tests (parent_ready_tracker.rs:316-542) replayed.
 // They root the tracker at genesis, hence N = 0 here.
 // Block::new_unique(i) becomes blockOf(i, 1). The tests hand the tracker
 // certificates directly, so they use the node's calls, not the network.
 module tr_tests {
-  import tracker(W = 4, N = 0, SPAN = 64, BLOCKS_PER_SLOT = 5, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = false).*
+  import tracker(W = 4, N = 0, SPAN = 64, BLOCKS_PER_SLOT = 5, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = false, ASSUME_WINDOW = false).*
 
   def B(i: int): Block = blockOf(i, 1)
   def isReady(s: Slot, b: Block): bool = tr.st.get(s).parents.contains(b)
@@ -649,7 +672,7 @@ module tr_tests {
 
 // snapshot_wfsm (383): the Rust test that roots the tracker away from genesis.
 module tr_tests_root {
-  import tracker(W = 4, N = 2147, SPAN = 5, BLOCKS_PER_SLOT = 1, MAX_CERTIFIED = 4, ASSUME_FINAL = false, ASSUME_CHAIN = false).*
+  import tracker(W = 4, N = 2147, SPAN = 5, BLOCKS_PER_SLOT = 1, MAX_CERTIFIED = 4, ASSUME_FINAL = false, ASSUME_CHAIN = false, ASSUME_WINDOW = false).*
 
   def isReady(s: Slot, b: Block): bool = tr.st.get(s).parents.contains(b)
 

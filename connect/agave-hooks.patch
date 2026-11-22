@@ -368,10 +368,10 @@ index 1c9f2dc..1804807 100644
 +mod quint_connect;
 diff --git a/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs b/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs
 new file mode 100644
-index 0000000..0240dc9
+index 0000000..445c0a7
 --- /dev/null
 +++ b/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs
-@@ -0,0 +1,742 @@
+@@ -0,0 +1,756 @@
 +//! ag-model hook.
 +//!
 +//! Model-based test of `ParentReadyTracker` against the Quint model in
@@ -1084,6 +1084,20 @@ index 0000000..0240dc9
 +    max_steps = 60
 +)]
 +fn chain_full_slots() -> impl Driver {
++    TrackerDriver::new()
++}
++
++/// The forward-only step of tracker_pragmatic.qnt: nothing on passed slots and
++/// no repeats, so every delivery is new to the tracker.
++#[quint_run(
++    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    main = "c_n101",
++    init = "initC",
++    step = "stepForward",
++    max_samples = 200,
++    max_steps = 60
++)]
++fn chain_forward_only() -> impl Driver {
 +    TrackerDriver::new()
 +}
 +

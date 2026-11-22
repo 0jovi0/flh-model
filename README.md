@@ -51,15 +51,18 @@ needs about 8 GB of disk.
   a node receives them in any order, with repeats, and moves its root.
 - **Assumptions about the network:**
   `ASSUME_CHAIN` a block is certified only on a valid parent; `ASSUME_FINAL` a
-  finalized slot has no Skip certificate and no second certified block; `ASSUME_Q5`
-  at most 4 certified blocks per slot.
-- **Properties.** Twelve, named `prop<number>_<name>` and indexed in a comment in
+  finalized slot has no Skip certificate and no second certified block;
+  `ASSUME_WINDOW` a slot gets a Skip certificate only once its window is open (its
+  first slot has a ready parent), because nodes arm their skip timers for a window
+  when they see ParentReady for its first slot; `ASSUME_Q5` at most 4 certified
+  blocks per slot.
+- **Properties.** Thirteen, named `prop<number>_<name>` and indexed in a comment in
   `tracker.qnt`. Each is tagged by why it holds: `[tracker]` compares the copy with
   the definition, `[construction]` restates the model, `[assumption]` follows from
   the network assumptions. Check them with the bundles `ALL` or `NO_CHAIN`.
 - **Instances.** `tr_n100`..`tr_n103` (root at each position in a window), `tr_b5`,
-  `tr_w2`, `tr_free` (no chains), `tr_nofinal` (expected to fail `ALL`), `tr_tiny`
-  (small enough for every state).
+  `tr_w2`, `tr_free` (no chains, skips in any slot), `tr_nofinal` (expected to fail
+  `ALL`), `tr_tiny` (small enough for every state).
 
 ## The pragmatic driver
 
@@ -68,7 +71,7 @@ leaves out what the tracker ignores: network activity and deliveries for slots a
 below the node's root, and re-delivery of certificates the node already holds.
 
 It is a subset of the runs of `tracker.qnt`, so a violation found with it is a violation
-of the full model. A pass covers only forward-moving runs. Use it with both assumptions
+of the full model. A pass covers only forward-moving runs. Use it with all assumptions
 on.
 
 ```
@@ -99,11 +102,12 @@ events per call, order inside a call ignored); what the leader of each slot woul
 told; whether the fifth-block assert fired. At the start of every trace the driver
 also checks that no two blocks share an id.
 
-Two kinds of traces:
+Three kinds of traces:
 
 - **`stepC`**: the network and node of `tracker.qnt`, under the assumptions.
+- **`stepForward`**: the pragmatic step, forward only (test `chain_forward_only`).
 - **`stepRaw`**: any call sequence, with no network and no assumptions. This reaches the
-  fifth-block panic and a root without a certificate.
+  fifth-block panic, a root without a certificate, and skips in any slot order.
 
 Both take most picks from what is new above the root, because the tracker ignores passed
 slots and repeats. A share of passed slots and repeats is kept: ignoring them is a rule

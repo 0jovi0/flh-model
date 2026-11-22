@@ -22,7 +22,7 @@
 //     state of tr_tiny, and simulation of the other instances) and by the
 //     trace comparison on the Rust tracker, which keeps passed slots and
 //     repeats.
-//   - Use it with both assumptions on. Without ASSUME_FINAL, work at or below
+//   - Use it with all assumptions on. Without ASSUME_FINAL, work at or below
 //     the root can reach slots above it (a second certified block in the
 //     root's slot, or a Skip certificate for it), and leaving it out would
 //     hide the runs that instance exists to show.
@@ -56,9 +56,9 @@ module tracker_pragmatic {
 }
 
 // The instance tr_tiny of tracker.qnt, to compare the number of states.
-module prag_tiny { import tracker_pragmatic(W = 2, N = 101, SPAN = 3, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true).* }
+module prag_tiny { import tracker_pragmatic(W = 2, N = 101, SPAN = 3, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true, ASSUME_WINDOW = true).* }
 // The simulation instance tr_n101 of tracker.qnt.
-module prag_n101 { import tracker_pragmatic(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true).* }
+module prag_n101 { import tracker_pragmatic(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true, ASSUME_WINDOW = true).* }
 // One block per slot over a whole four-slot window and the start of the
 // next one (slots 103 to 107 take certificates; 104 and 108 start windows).
-module prag_w4 { import tracker_pragmatic(W = 4, N = 102, SPAN = 5, BLOCKS_PER_SLOT = 1, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true).* }
+module prag_w4 { import tracker_pragmatic(W = 4, N = 102, SPAN = 5, BLOCKS_PER_SLOT = 1, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = true, ASSUME_WINDOW = true).* }
