@@ -2,7 +2,35 @@
 
 A Quint model of ParentReady from Alpenglow's fast leader handover, and a
 quint-connect driver that checks Agave's `ParentReadyTracker` against it.
-Agave version: v5.0.0-alpha.1.
+
+## Setup
+
+From the root of a clone, on Linux x64:
+
+```
+./install-tools.sh     # Node, a JDK and Quint into tools/
+connect/setup.sh       # the pinned Agave into agave/, with the driver patch applied
+```
+
+Agave is pinned to tag `v5.0.0-alpha.1`, commit
+`22d4b3a8d9bfd7b4dcda330ea17c777c09fc7209`. `connect/setup.sh` clones it from
+`anza-xyz/agave` and stops if the commit differs.
+
+After both steps the clone looks like this:
+
+```
+flh-model/
+  spec/        the model
+  connect/     agave-hooks.patch, setup.sh
+  tools/       Node, JDK, Quint             (created by install-tools.sh)
+  agave/       Agave at the pinned commit   (created by connect/setup.sh)
+  q, t         run quint and cargo with the toolchain from tools/
+```
+
+`agave/` has to sit there: the driver looks for the model at `../../spec` from
+`agave/votor`. The model needs only the first step. The driver needs both, plus rustup
+(Agave selects its own Rust version) and Agave's build dependencies. `q` and `t` cap a
+run at 4 cores; `Q_CPUS=<n>` changes that.
 
 ## The model
 
@@ -22,6 +50,8 @@ ParentReady decides which blocks a leader may build on at the start of its windo
   described at the top of `spec/tracker.qnt`.
 - `spec/tracker_pragmatic.qnt` runs the same model moving only forward: nothing for
   slots the node has passed, no repeated deliveries.
+
+From the root of the clone:
 
 ```
 ./q test --main=tr_tests spec/tracker.qnt       # the tracker's Rust unit tests, replayed
@@ -48,15 +78,17 @@ A `View` holds, per slot, the certified blocks, the ready parents and the skip f
 the root; the highest slot with a ready parent; every ParentReady event; and what the
 leader of each slot would be told.
 
+From `agave/`:
+
 ```
-cd agave
 ../t test -p agave-votor --features agave-unstable-api --lib quint_connect
 ```
 
 ## Watching both sides
 
+From `agave/`:
+
 ```
-cd agave
 AG_TRACE=1 ../t test -p agave-votor --features agave-unstable-api \
   --lib quint_connect::one_short_trace -- --nocapture
 ```
@@ -87,18 +119,9 @@ and `rust:` from the tracker. Blocks are written `slot.id`. One step of the outp
 
 `AG_TRACE=2` adds the tracker's own `Debug` output.
 
-## Setup
+## Changing the driver
 
-```
-./install-tools.sh     # Node, a JDK and Quint into tools/
-connect/setup.sh       # Agave v5.0.0-alpha.1 into agave/, plus the patch
-```
-
-The model needs only the first step. The driver needs both, plus a Rust toolchain
-through rustup and Agave's build dependencies. `q` and `t` run `quint` and `cargo` with
-the toolchain from `tools/`, capped at 4 cores (`Q_CPUS=<n>` to change).
-
-After changing the driver, refresh the patch from inside `agave/`:
+Edit it in `agave/`, then refresh the patch from inside `agave/`:
 
 ```
 git add -A && git diff --cached v5.0.0-alpha.1 > ../connect/agave-hooks.patch
