@@ -35,13 +35,16 @@ module tracker_pragmatic {
   import tracker.* from "./tracker"
   export tracker.*
 
-  action stepPragmatic = any {
+  // `skippable` are the slots the network may give a Skip certificate. The
+  // model checker uses all of them (stepPragmatic); the trace comparison
+  // passes a different set in every run (tracker_connect.qnt).
+  action stepPragmaticWith(skippable: Set[Slot]): bool = any {
     // the network: only above the node's root
     { nondet b = oneOf(BLOCKS)
       nondet p = oneOf(wCerts)
       all { b.slot > tr.root, certify(b, p) } },
     { nondet s = oneOf(FREE_SLOTS)
-      all { s > tr.root, skipSlot(s) } },
+      all { s > tr.root, skippable.contains(s), skipSlot(s) } },
     { nondet b = oneOf(wCerts)
       all { b.slot > tr.root, finalize(b) } },
     // the node: only something new, above its root
@@ -53,6 +56,8 @@ module tracker_pragmatic {
     { nondet b = oneOf(wFinal)
       advanceRoot(b) },
   }
+
+  action stepPragmatic = stepPragmaticWith(FREE_SLOTS)
 }
 
 // The instance tr_tiny of tracker.qnt, to compare the number of states.

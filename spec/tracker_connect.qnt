@@ -23,6 +23,10 @@ module tracker_connect {
   // this variable it would not appear in a trace.
   var leaderBefore: Slot -> Choice
 
+  // The slots that may get a Skip certificate in this run; picked at the
+  // start and then fixed. See "how skipped a run is" below.
+  var maySkip: Set[Slot]
+
   def leaderNow: Slot -> Choice = SLOTS.mapBy(s => productionParent(tr, s))
   def freshLeader(seed: int): Slot -> Choice =
     SLOTS.mapBy(s => productionParent(newTracker(initialRoot(seed)), s))
@@ -42,8 +46,36 @@ module tracker_connect {
     nondet last = oneOf(Set(H))
     nondet blocks = oneOf(Set(allBlocks(seed).union(Set(initialRoot(seed)))))
     nondet count = oneOf(Set(SPAN * BLOCKS_PER_SLOT + 1))
-    all { initWith(seed), leaderBefore' = freshLeader(seed) }
+    // how skipped this run is: see below
+    nondet appetite = oneOf(Set(0, 1, 2, 3))
+    nondet some = oneOf(powerset(FREE_SLOTS))
+    nondet more = oneOf(powerset(FREE_SLOTS))
+    all {
+      initWith(seed),
+      leaderBefore' = freshLeader(seed),
+      maySkip' = restOfWindow(
+        if (appetite == 0) Set()
+        else if (appetite == 1) some.intersect(more)
+        else if (appetite == 2) some
+        else FREE_SLOTS),
+    }
   }
+
+  // ---- how skipped a run is ----
+  //
+  // With plain random picks nearly every run ends with every slot skipped: a
+  // Skip certificate takes one step and cannot be undone, while finalizing a
+  // slot takes several. A network skips a slot only when its leader fails, so
+  // each run draws the slots that may be skipped:
+  //   appetite 0 - none: every slot must be decided by a certified block
+  //   appetite 1 - about a quarter of the slots
+  //   appetite 2 - about half of the slots
+  //   appetite 3 - all slots, the adversarial runs
+  // A slot that may be skipped makes the rest of its window skippable too,
+  // because a block needs a certified block in the slot before it: after a
+  // skipped slot the remaining slots of that window can only be skipped.
+  pure def restOfWindow(xs: Set[Slot]): Set[Slot] =
+    FREE_SLOTS.filter(s => xs.exists(x => windowStart(x) == windowStart(s) and x <= s))
   // Fixed block ids.
   action initC = initSeeded(DEFAULT_ID_SEED)
   // Block ids that follow the run's seed.
@@ -70,13 +102,13 @@ module tracker_connect {
   // What would be new, above the node's root. A pick from an empty set
   // switches its branch off for that step.
   def newToNetwork: Set[Block] = BLOCKS.filter(b => b.slot > tr.root and not(wCerts.contains(b)))
-  def newSkipsForNetwork: Set[Slot] = FREE_SLOTS.filter(s =>
+  def newSkipsForNetwork: Set[Slot] = maySkip.filter(s =>
     s > tr.root and not(wSkips.contains(s)) and (ASSUME_WINDOW implies windowOpen(s)))
   def notYetFinal: Set[Block] = wCerts.filter(b => b.slot > tr.root and not(wFinal.contains(b)))
   def undelivered: Set[Block] = wCerts.filter(b => b.slot > tr.root and not(certs.contains(b)))
   def undeliveredSkips: Set[Slot] = wSkips.filter(s => s > tr.root and not(skips.contains(s)))
   def newToNode: Set[Block] = BLOCKS.filter(b => b.slot > tr.root and not(certs.contains(b)))
-  def newSkipsForNode: Set[Slot] = FREE_SLOTS.filter(s => s > tr.root and not(skips.contains(s)))
+  def newSkipsForNode: Set[Slot] = maySkip.filter(s => s > tr.root and not(skips.contains(s)))
 
   // The driver of tracker.qnt: a network under the assumptions, and a node
   // that receives what the network has.
@@ -106,15 +138,27 @@ module tracker_connect {
         deliverSkip(s) },
       { nondet b = oneOf(wFinal)
         advanceRoot(b) },
-      // anything tracker.qnt allows, passed slots and repeats included
-      step,
+      // passed slots and repeats: a block certified anywhere, and anything
+      // the network has delivered again
+      { nondet b = oneOf(BLOCKS)
+        nondet p = oneOf(wCerts)
+        certify(b, p) },
+      { nondet b = oneOf(wCerts)
+        deliverCertified(b) },
+      { nondet s = oneOf(wSkips)
+        deliverSkip(s) },
     },
     leaderBefore' = leaderNow,
+    maySkip' = maySkip,
   }
 
   // The forward-only step of tracker_pragmatic.qnt: nothing for a slot at or
   // below the node's root, and no certificate delivered twice.
-  action stepForward = all { stepPragmatic, leaderBefore' = leaderNow }
+  action stepForward = all {
+    stepPragmaticWith(maySkip),
+    leaderBefore' = leaderNow,
+    maySkip' = maySkip,
+  }
 
   // Any call sequence: no network and no assumptions. Any block is
   // handed to the tracker as certified, any slot as skipped, and the root
@@ -151,6 +195,7 @@ module tracker_connect {
         all { certs.size() + skips.size() >= 6 * (tr.root - N + 1), nodeRoot(b) } },
     },
     leaderBefore' = leaderNow,
+    maySkip' = maySkip,
   }
 
   // Witness: the tracker has hit its fifth-block assert. Use it to see how

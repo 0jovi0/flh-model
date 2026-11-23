@@ -109,17 +109,32 @@ Three kinds of traces:
 - **`stepRaw`**: any call sequence, with no network and no assumptions. This reaches the
   fifth-block panic, a root without a certificate, and skips in any slot order.
 
-Both take most picks from what is new above the root, because the tracker ignores passed
-slots and repeats. A share of passed slots and repeats is kept: ignoring them is a rule
-of the tracker too. Measured on 100 traces of 60 steps (plain: unweighted random picks):
+Step weights:
+
+- **Mostly new input above the root.** The tracker ignores passed slots and repeats. A
+  share of both is kept: ignoring them is a rule of the tracker too.
+- **Each run draws how skipped it is.** At init a run draws the slots that may be
+  skipped: none, about a quarter, about half, or all of them. A skippable slot makes the
+  rest of its window skippable, as a node skips the rest of a window.
+
+Measured on 200 traces of 60 steps of `stepC`, by how skipped the run may be:
+
+| Slots that may be skipped | Skipped at the end | Blocks finalized | Slots the root climbed (of 9) |
+|---|---|---|---|
+| none | 0.0 | 3.3 | 6.9 |
+| about a quarter | 2.8 | 3.1 | 6.7 |
+| about half | 4.4 | 3.0 | 6.4 |
+| all | 5.3 | 2.3 | 5.5 |
+
+Share of steps, on 100 traces of 60 steps (plain: unweighted random picks):
 
 | Steps that | `stepRaw` plain | `stepRaw` weighted | `stepC` plain | `stepC` weighted |
 |---|---|---|---|---|
-| change the tracker | 31% | 56% | 21% | 31% |
-| hit a slot at or below the root | 44% | 20% | 15% | 14% |
-| repeat something already delivered | 17% | 16% | 22% | 11% |
+| change the tracker | 31% | 55% | 21% | 27% |
+| hit a slot at or below the root | 44% | 22% | 15% | 20% |
+| repeat something already delivered | 17% | 16% | 22% | 14% |
 | move the root | 9% | 7% | 3% | 4% |
-| are network only | - | - | 39% | 40% |
+| are network only | - | - | 39% | 35% |
 
 To watch both sides of a run:
 
