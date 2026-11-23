@@ -11,9 +11,8 @@ module parentready {
   // ---------------- constants ----------------
 
   const W: int      // slots per leader window (NUM_CONSECUTIVE_LEADER_SLOTS = 4)
-  const N: int      // slot of the initial root block, any natural number. Windows are
-                    // aligned to absolute slot 0, so N % W decides where in a window
-                    // the model starts.
+  const N: int      // slot of the initial root block. Windows are aligned to slot 0,
+                    // so N % W decides where in a window the model starts.
   const SPAN: int   // how many slots after N can receive certificates
   const BLOCKS_PER_SLOT: int  // how many different blocks can exist in one slot
   const MAX_CERTIFIED: int  // MAX_NOTAR_FALLBACK_BLOCKS = 4 (votor/src/common.rs:10)
@@ -34,7 +33,6 @@ module parentready {
   //   parents   - blocks that are ready parents for this slot (`parents_ready`)
   type Status = { skip: bool, certified: Set[Block], parents: Set[Block] }
 
-  // A ParentReady event as the tracker emits it.
   type Event = { slot: Slot, parent: Block }
 
   // The tracker's state (Rust `ParentReadyTracker`).
@@ -43,8 +41,7 @@ module parentready {
   //   highest - `highest_with_parent_ready`
   //   events  - record of the ParentReady events emitted
   //   panicked - the code asserts at most MAX_CERTIFIED certified blocks in a
-  //              slot (line 143); a further one aborts the process. Here the
-  //              tracker stops and stays as it was just before that call.
+  //              slot (line 143). Here the tracker stops and stays as it was.
   type Tracker = { st: Slot -> Status, root: Slot, highest: Slot, events: List[Event],
                    panicked: bool }
 
@@ -58,38 +55,27 @@ module parentready {
   pure val H: Slot = MAX_SLOT + 1
   pure val SLOTS: Set[Slot] = N.to(H)
   pure val FREE_SLOTS: Set[Slot] = (N + 1).to(MAX_SLOT)
-  // SLOTS in ascending order.
   pure val SLOT_LIST: List[Slot] = range(N, H + 1)
 
   // ---------------- block ids ----------------
   //
   // In the code an id is a 32-byte hash. Here it is a 15-bit number computed
-  // from a seed, the slot and the block's number within the slot, so no two
-  // blocks share an id and ids carry no meaning beyond equality and order, as
-  // with hashes. 15 bits because every product must stay below 2^31: the
-  // explicit-state checker (TLC) has 32-bit integers.
-  //
-  // The seed is fixed by default (DEFAULT_ID_SEED), so tests and model
-  // checking see one set of ids. A state machine may instead pick it from
-  // SEEDS at the start of a run; it then follows the simulator's --seed.
+  // from a seed, the slot and the block's number within the slot. 15 bits
+  // because the explicit-state checker (TLC) has 32-bit integers. The seed is
+  // DEFAULT_ID_SEED unless a run picks one from SEEDS.
   pure val ID_MOD: int = 32749        // a prime below 2^15
   pure val DEFAULT_ID_SEED: int = 7
   pure val SEEDS: Set[int] = 0.to(ID_MOD - 1)
-  // (s * 64 + k) is different for every block as long as a slot has fewer
-  // than 64 blocks; adding the seed and multiplying modulo a prime keeps the
-  // values different and spreads them over the range. Which block of a slot
-  // has the smaller id varies with the slot and the seed.
   pure def blockId(seed: int, s: Slot, k: int): int =
     ((s * 64 + k + seed) % ID_MOD) * 27449 % ID_MOD
   // Block number k of slot s.
   pure def blockAt(seed: int, s: Slot, k: int): Block = { slot: s, id: blockId(seed, s, k) }
-  // The root block the model starts from. The root itself is state and advances.
+  // The root block the model starts from.
   pure def initialRoot(seed: int): Block = blockAt(seed, N, 0)
   // Every block that can exist above the initial root.
   pure def allBlocks(seed: int): Set[Block] =
     tuples(FREE_SLOTS, 1.to(BLOCKS_PER_SLOT)).map(p => blockAt(seed, p._1, p._2))
-  // No two blocks share an id: there are as many different ids as there are
-  // blocks (SPAN slots of BLOCKS_PER_SLOT blocks, plus the initial root).
+  // No two blocks share an id.
   pure def idsDistinct(seed: int): bool =
     allBlocks(seed).union(Set(initialRoot(seed))).map(b => b.id).size()
       == SPAN * BLOCKS_PER_SLOT + 1
@@ -105,7 +91,6 @@ module parentready {
   pure def le(a: Block, b: Block): bool =
     a.slot < b.slot or (a.slot == b.slot and a.id <= b.id)
 
-  // Minimum of a non-empty set of blocks.
   pure def minOf(bs: Set[Block]): Block =
     bs.fold({ slot: H + 1, id: 0 }, (acc, p) => if (le(p, acc)) p else acc)
 
@@ -125,7 +110,6 @@ module parentready {
     SLOTS.forall(k => (b.slot < k and k < s) implies skips.contains(k)),
   }
 
-  // All ready parents for slot s.
   pure def readySet(certs: Set[Block], skips: Set[Slot], s: Slot): Set[Block] =
     certs.filter(b => ready(certs, skips, s, b))
 

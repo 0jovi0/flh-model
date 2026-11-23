@@ -1,7 +1,8 @@
 # flh-model
 
-A Quint model of ParentReady from Alpenglow's fast leader handover, and a
-quint-connect driver that checks Agave's `ParentReadyTracker` against it.
+A demonstration of quint-connect on one Agave component: a Quint model of
+ParentReady, from Alpenglow's fast leader handover, and a driver that checks Agave's
+`ParentReadyTracker` against it.
 
 ## Setup
 
@@ -44,10 +45,11 @@ ParentReady decides which blocks a leader may build on at the start of its windo
   Rust line numbers in the comments. Around it sits a network that produces block
   certificates, Skip certificates and finalizations, and a node that receives them
   in any order, with repeats, and moves its root.
-- Thirteen properties (`prop1_...` to `prop13_...`). Those tagged `[tracker]` state
-  that the copy agrees with the definition whatever the order of arrival. The network
-  obeys four assumptions (`ASSUME_CHAIN`, `ASSUME_FINAL`, `ASSUME_WINDOW`, `ASSUME_Q5`),
-  described at the top of `spec/tracker.qnt`.
+- Thirteen numbered property groups (`prop1_...` to `prop13_...`). Five groups check
+  the tracker copy against the definition (1, 2, 3, 6 and 9). The other eight hold by
+  construction or follow from four assumptions about the network (`ASSUME_CHAIN`,
+  `ASSUME_FINAL`, `ASSUME_WINDOW`, `ASSUME_Q5`), described at the top of
+  `spec/tracker.qnt`.
 - `spec/tracker_pragmatic.qnt` runs the same model moving only forward: nothing for
   slots the node has passed, no repeated deliveries.
 

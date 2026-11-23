@@ -19,9 +19,9 @@ module tracker {
   import parentready.* from "./parentready"
   export parentready.*
 
-  // Assumptions about what the network can produce. Each is a fact about
-  // votes and quorums that this model takes as given; switch one off to see
-  // which properties depend on it.
+  // Assumptions about what the network can produce. They stand in for votes,
+  // which are not modelled. Switch one off to see which properties depend on
+  // it.
   //
   // ASSUME_FINAL: a finalized block's slot never has a Skip certificate and
   //   never a second certified block.
@@ -32,10 +32,7 @@ module tracker {
   //   open: the first slot of that window has a ready parent, or it is the
   //   window the initial root sits in. In the code a node arms its skip timers
   //   for a window when it sees a ParentReady for the window's first slot
-  //   (event_handler.rs:258, the only call of set_timeouts), and one timer
-  //   covers the rest of that window (timer_manager/timers.rs:89). Without a
-  //   timer a node votes skip only in reaction to other votes for that slot,
-  //   so a quorum of skip votes needs honest nodes whose window is open.
+  //   (event_handler.rs:258, timer_manager/timers.rs:89).
   // ASSUME_Q5 (always on): a slot never has more than MAX_CERTIFIED certified
   //   blocks.
   const ASSUME_FINAL: bool
@@ -114,9 +111,8 @@ module tracker {
           else st1.get(s)),
         // line 235: highest moves for every future slot, new parent or not
         highest: maxInt(t.highest, stop),
-        // lines 220-232: an event per new parent on each window start. The
-        // events of one call come out in slot order, but for one slot their
-        // order is not the code's; no property here depends on it.
+        // lines 220-232: an event per new parent on each window start. Within
+        // one slot their order is not the code's; no property here depends on it.
         events: SLOT_LIST
           .select(s => future.contains(s) and first(s))
           .foldl(t.events, (ev, s) =>
@@ -314,8 +310,7 @@ module tracker {
   // ------------------------------------------------------------------
   // Properties. Node-side properties are about slots above the current root.
   // Tags:
-  //   [tracker]      compares the transcribed tracker with the definition;
-  //                  this is what can catch a difference from the code
+  //   [tracker]      compares the transcribed tracker with the definition
   //   [construction] restates the definition, the id arithmetic or a guard
   //                  of `certify`; a failure means the model itself is wrong
   //   [assumption]   follows from the named assumption about the network,
@@ -343,8 +338,8 @@ module tracker {
   //   11  certifiedOnEarlierCertified               [construction]
   //   12  finalizedOnOneChain                       [assumption]
   //   13  skipOnlyInOpenWindow                      [construction]
-  // Each is named prop<number>_<name>. IDS_DISTINCT is a check of the model's
-  // id arithmetic, not a property of ParentReady, and has no number.
+  // Each is named prop<number>_<name>. IDS_DISTINCT checks the model's id
+  // arithmetic and has no number.
   // ------------------------------------------------------------------
 
   def R(s: Slot): Set[Block] = readySet(certs, skips, s)
@@ -408,9 +403,8 @@ module tracker {
     })
 
   // prop7_coveredSlotHasReadyParent [construction]: if every slot between the root and s has a certified
-  // block or a skip certificate, s has a ready parent. Stated in
-  // parentready.qnt (coveredHasParent); evaluated here on what the node
-  // holds and on what the network holds.
+  // block or a skip certificate, s has a ready parent (coveredHasParent in
+  // parentready.qnt), for what the node holds and for what the network holds.
   val prop7_coveredSlotHasReadyParent = and {
     above.forall(s => coveredHasParent(certs, skips, tr.root, s)),
     SLOTS.forall(s => coveredHasParent(wCerts, wSkips, N, s)),
@@ -465,8 +459,7 @@ module tracker {
        else parentOf.get(b).slot == b.slot - 1))
 
   // prop13_skipOnlyInOpenWindow [construction]: every skip-certified slot lies
-  // in an open window. This is ASSUME_WINDOW read back from the state; it
-  // stays true later because a window never closes.
+  // in an open window. This is ASSUME_WINDOW read back from the state.
   val prop13_skipOnlyInOpenWindow = wSkips.forall(s => windowOpen(s))
 
   // prop12_finalizedOnOneChain [assumption: ASSUME_CHAIN and ASSUME_FINAL]: finalized blocks lie on

@@ -19,34 +19,28 @@ module tracker_connect {
   export tracker_pragmatic.*
 
   // What block_production_parent answers for every slot, taken before the
-  // step. The leader's answer is a pure function in the model, so without
-  // this variable it would not appear in a trace.
+  // step and recorded so that it appears in a trace.
   var leaderBefore: Slot -> Choice
 
   // The slots that may get a Skip certificate in this run; picked at the
-  // start and then fixed. See "how skipped a run is" below.
+  // start and then fixed.
   var maySkip: Set[Slot]
 
   def leaderNow: Slot -> Choice = SLOTS.mapBy(s => productionParent(tr, s))
   def freshLeader(seed: int): Slot -> Choice =
     SLOTS.mapBy(s => productionParent(newTracker(initialRoot(seed)), s))
 
-  // The four picks choose nothing (each set has one element). They are
-  // there so the trace tells the driver about the instance: a trace records
-  // the values an action picks, and the driver sees only the action name and
-  // its picks.
+  // The four picks choose nothing (each set has one element). They put the
+  // instance into the trace, where the driver reads it.
   //   root   - the root block the run starts from
   //   last   - the last slot of the instance
   //   blocks - every block of the instance, the root included
-  //   count  - how many blocks that must be. The driver checks that there
-  //            are that many, each with its own id: two blocks with one id
-  //            would be one element of `blocks`.
+  //   count  - how many blocks that must be; the driver checks it
   action initSeeded(seed: int): bool = {
     nondet root = oneOf(Set(initialRoot(seed)))
     nondet last = oneOf(Set(H))
     nondet blocks = oneOf(Set(allBlocks(seed).union(Set(initialRoot(seed)))))
     nondet count = oneOf(Set(SPAN * BLOCKS_PER_SLOT + 1))
-    // how skipped this run is: see below
     nondet appetite = oneOf(Set(0, 1, 2, 3))
     nondet some = oneOf(powerset(FREE_SLOTS))
     nondet more = oneOf(powerset(FREE_SLOTS))
@@ -63,17 +57,15 @@ module tracker_connect {
 
   // ---- how skipped a run is ----
   //
-  // With plain random picks nearly every run ends with every slot skipped: a
-  // Skip certificate takes one step and cannot be undone, while finalizing a
-  // slot takes several. A network skips a slot only when its leader fails, so
+  // With plain random picks nearly every run ends with every slot skipped, so
   // each run draws the slots that may be skipped:
   //   appetite 0 - none: every slot must be decided by a certified block
   //   appetite 1 - about a quarter of the slots
   //   appetite 2 - about half of the slots
   //   appetite 3 - all slots, the adversarial runs
-  // A slot that may be skipped makes the rest of its window skippable too,
-  // because a block needs a certified block in the slot before it: after a
-  // skipped slot the remaining slots of that window can only be skipped.
+  // A slot selected as skippable also makes later slots in its window
+  // skippable. This does not prevent those slots from receiving block
+  // certificates.
   pure def restOfWindow(xs: Set[Slot]): Set[Slot] =
     FREE_SLOTS.filter(s => xs.exists(x => windowStart(x) == windowStart(s) and x <= s))
   // Fixed block ids.
@@ -86,12 +78,9 @@ module tracker_connect {
 
   // ---- which steps a trace is made of ----
   //
-  // A call for a slot at or below the root is ignored by the tracker, and so
-  // is a certificate it already holds. With plain random picks such calls
-  // are most of a trace, so both steps below take most of their picks from
-  // what is new above the root. They keep a share of passed slots and
-  // repeats: "ignore it" is a rule of the tracker too, and those are the
-  // calls that test it.
+  // The tracker ignores a call for a slot at or below the root and a
+  // certificate it already holds. Both steps below take most of their picks
+  // from what is new above the root and keep a share of the ignored calls.
   //
   // Quint picks one branch of `any` with equal chance, so a branch is
   // written several times to make it more likely. The blocks inside `any`
@@ -216,11 +205,8 @@ module c_b5 { import tracker_connect(W = 4, N = 101, SPAN = 5, BLOCKS_PER_SLOT =
 module c_free { import tracker_connect(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = true, ASSUME_CHAIN = false, ASSUME_WINDOW = false).* }
 module c_nofinal { import tracker_connect(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 2, MAX_CERTIFIED = 4, ASSUME_FINAL = false, ASSUME_CHAIN = true, ASSUME_WINDOW = true).* }
 // For stepRaw. The assumptions play no part in it.
-// c_raw: four blocks per slot, so slots fill up to the limit but the tracker
-// never panics and every step of a trace counts.
+// c_raw: four blocks per slot, so slots fill up to the limit without a panic.
 module c_raw { import tracker_connect(W = 4, N = 101, SPAN = 9, BLOCKS_PER_SLOT = 4, MAX_CERTIFIED = 4, ASSUME_FINAL = false, ASSUME_CHAIN = false, ASSUME_WINDOW = false).* }
-// c_raw_small: five blocks per slot on three slots, so a fifth block of one
-// slot arrives within 20 steps in most runs. This is the instance that
-// exercises the panic. After a panic the rest of a trace only checks that
-// nothing moves, so it is run with short traces.
+// c_raw_small: five blocks per slot on three slots, so most runs reach the
+// panic within 20 steps. Traces are short because nothing moves after a panic.
 module c_raw_small { import tracker_connect(W = 4, N = 101, SPAN = 3, BLOCKS_PER_SLOT = 5, MAX_CERTIFIED = 4, ASSUME_FINAL = false, ASSUME_CHAIN = false, ASSUME_WINDOW = false).* }

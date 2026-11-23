@@ -18,14 +18,11 @@
 //   - This is a subset of the runs of tracker.qnt. A violation found here is
 //     a violation there too.
 //   - "No violation" here covers only forward-moving runs. That the left-out
-//     steps change nothing is checked by the full model (every reachable
-//     state of tr_tiny, and simulation of the other instances) and by the
-//     trace comparison on the Rust tracker, which keeps passed slots and
-//     repeats.
+//     steps change nothing is checked by the full model and by the trace
+//     comparison, which keep them.
 //   - Use it with all assumptions on. Without ASSUME_FINAL, work at or below
 //     the root can reach slots above it (a second certified block in the
-//     root's slot, or a Skip certificate for it), and leaving it out would
-//     hide the runs that instance exists to show.
+//     root's slot, or a Skip certificate for it), which this step leaves out.
 //
 // Run from the repo root:
 //   ./q run --main=prag_n101 --step=stepPragmatic --invariant=ALL --max-samples=3000 --max-steps=60 spec/tracker_pragmatic.qnt

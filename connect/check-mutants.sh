@@ -26,8 +26,12 @@ cd "$AGAVE"
 applied=""
 restore() {
   if [ -n "$applied" ]; then
-    git apply -R "$applied"
-    applied=""
+    if git apply -R "$applied"; then
+      applied=""
+    else
+      echo "could not reverse $applied: agave/ still has the mutant applied" >&2
+      exit 2
+    fi
   fi
 }
 trap restore EXIT
