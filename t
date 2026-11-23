@@ -1,17 +1,21 @@
 #!/bin/bash
 # Run cargo with the same caps as ./q: hard CPU quota, low priority, capped
-# memory.
+# memory (see ./q for when the cgroup is used).
 #
-# Usage (from the directory with the Cargo.toml, e.g. /opt/ag-model/agave):
-#   /opt/ag-model/t test -p agave-votor --features agave-unstable-api --lib quint_connect
-#   Q_CPUS=<n> /opt/ag-model/t ...   use n cores instead of the default 4
+# Usage, from agave/ inside this repo:
+#   ../t test -p agave-votor --features agave-unstable-api --lib quint_connect
+#   Q_CPUS=<n> ../t ...   use n cores instead of the default 4
 #
 # connect/bin comes first on PATH: its `quint` adds --n-threads, because
 # quint-connect starts the simulator with one thread per core.
-AG_MODEL=/opt/ag-model
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$HERE/env.sh"
 CPUS="${Q_CPUS:-4}"
-export PATH="$AG_MODEL/connect/bin:/root/.cargo/bin:$PATH"
+export PATH="$HERE/connect/bin:$HOME/.cargo/bin:$PATH"
 export Q_CPUS="$CPUS" CARGO_BUILD_JOBS="$CPUS"
-exec systemd-run --scope --quiet --collect \
-  -p CPUQuota="${CPUS}00%" -p CPUWeight=20 -p IOWeight=20 -p MemoryMax=32G \
-  nice -n 19 cargo "$@"
+if [ -z "${Q_NOCAP:-}" ] && [ "$(id -u)" -eq 0 ] && command -v systemd-run >/dev/null 2>&1; then
+  exec systemd-run --scope --quiet --collect \
+    -p CPUQuota="${CPUS}00%" -p CPUWeight=20 -p IOWeight=20 -p MemoryMax=32G \
+    nice -n 19 cargo "$@"
+fi
+exec nice -n 19 cargo "$@"

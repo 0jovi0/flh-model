@@ -1,7 +1,9 @@
 #!/bin/bash
 # quint-connect starts `quint run` with one thread per core. Keep it at the cap.
-REAL=/opt/ag-model/tools/quint/node_modules/.bin/quint
-export PATH=/opt/ag-model/tools/node/bin:$PATH
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FLH_MODEL="$(cd "$HERE/../.." && pwd)"
+REAL="$FLH_MODEL/tools/quint/node_modules/.bin/quint"
+export PATH="$FLH_MODEL/tools/node/bin:$PATH"
 if [ "${1:-}" = "run" ] && [[ " $* " != *" --n-threads"* ]]; then
   exec "$REAL" "$@" --n-threads="${Q_CPUS:-4}"
 fi

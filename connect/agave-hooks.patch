@@ -1,8 +1,8 @@
 diff --git a/Cargo.lock b/Cargo.lock
-index 95fcce3..fd9fdf1 100644
+index 536aeee..566037b 100644
 --- a/Cargo.lock
 +++ b/Cargo.lock
-@@ -563,15 +563,19 @@ dependencies = [
+@@ -558,15 +558,19 @@ dependencies = [
   "agave-votor",
   "agave-votor-messages",
   "agave-votor-transport",
@@ -15,14 +15,14 @@ index 95fcce3..fd9fdf1 100644
   "itertools 0.15.0",
 + "itf",
   "log",
-  "parking_lot 0.12.5",
+  "parking_lot 0.13.0",
 + "quint-connect",
   "rand 0.9.4",
 + "serde",
   "smallvec",
   "solana-bls-signatures",
   "solana-clock",
-@@ -1975,6 +1979,15 @@ version = "1.0.3"
+@@ -1970,6 +1974,15 @@ version = "1.0.3"
  source = "registry+https://github.com/rust-lang/crates.io-index"
  checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
  
@@ -38,7 +38,7 @@ index 95fcce3..fd9fdf1 100644
  [[package]]
  name = "combine"
  version = "3.8.1"
-@@ -2472,6 +2485,27 @@ dependencies = [
+@@ -2467,6 +2480,27 @@ dependencies = [
   "serde",
  ]
  
@@ -66,7 +66,7 @@ index 95fcce3..fd9fdf1 100644
  [[package]]
  name = "data-encoding"
  version = "2.3.2"
-@@ -2495,6 +2529,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+@@ -2490,6 +2524,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
  checksum = "ececcb659e7ba858fb4f10388c250a7252eb0a27373f1a72b8748afdd248e587"
  dependencies = [
   "powerfmt",
@@ -74,7 +74,7 @@ index 95fcce3..fd9fdf1 100644
  ]
  
  [[package]]
-@@ -2667,6 +2702,12 @@ version = "0.11.0"
+@@ -2662,6 +2697,12 @@ version = "0.11.0"
  source = "registry+https://github.com/rust-lang/crates.io-index"
  checksum = "1435fa1053d8b2fbbe9be7e97eca7f33d37b28409959813daefc1446a14247f1"
  
@@ -87,7 +87,7 @@ index 95fcce3..fd9fdf1 100644
  [[package]]
  name = "eager"
  version = "0.1.0"
-@@ -3952,6 +3993,7 @@ checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
+@@ -3920,6 +3961,7 @@ checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
  dependencies = [
   "autocfg",
   "hashbrown 0.12.3",
@@ -95,7 +95,7 @@ index 95fcce3..fd9fdf1 100644
  ]
  
  [[package]]
-@@ -3963,6 +4005,8 @@ dependencies = [
+@@ -3931,6 +3973,8 @@ dependencies = [
   "equivalent",
   "hashbrown 0.17.1",
   "rayon",
@@ -104,7 +104,7 @@ index 95fcce3..fd9fdf1 100644
  ]
  
  [[package]]
-@@ -4065,6 +4109,18 @@ dependencies = [
+@@ -4033,6 +4077,18 @@ dependencies = [
   "either",
  ]
  
@@ -123,7 +123,7 @@ index 95fcce3..fd9fdf1 100644
  [[package]]
  name = "itoa"
  version = "1.0.9"
-@@ -4078,10 +4134,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+@@ -4046,10 +4102,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
  checksum = "1a3546dc96b6d42c5f24902af9e2538e82e39ad350b0c766eb3fbf2d8f3d8359"
  dependencies = [
   "jiff-static",
@@ -136,7 +136,7 @@ index 95fcce3..fd9fdf1 100644
  ]
  
  [[package]]
-@@ -4095,6 +4153,21 @@ dependencies = [
+@@ -4063,6 +4121,21 @@ dependencies = [
   "syn 2.0.117",
  ]
  
@@ -158,7 +158,7 @@ index 95fcce3..fd9fdf1 100644
  [[package]]
  name = "jni"
  version = "0.22.4"
-@@ -4888,6 +4961,21 @@ dependencies = [
+@@ -4865,6 +4938,21 @@ dependencies = [
   "num-traits",
  ]
  
@@ -180,7 +180,7 @@ index 95fcce3..fd9fdf1 100644
  [[package]]
  name = "num-traits"
  version = "0.2.19"
-@@ -5778,6 +5866,35 @@ dependencies = [
+@@ -5777,6 +5865,35 @@ dependencies = [
   "windows-sys 0.61.0",
  ]
  
@@ -216,7 +216,7 @@ index 95fcce3..fd9fdf1 100644
  [[package]]
  name = "quote"
  version = "1.0.47"
-@@ -6043,6 +6160,26 @@ dependencies = [
+@@ -6051,6 +6168,26 @@ dependencies = [
   "spin",
  ]
  
@@ -243,7 +243,7 @@ index 95fcce3..fd9fdf1 100644
  [[package]]
  name = "regex"
  version = "1.13.1"
-@@ -6434,6 +6571,30 @@ dependencies = [
+@@ -6442,6 +6579,30 @@ dependencies = [
   "winapi",
  ]
  
@@ -274,7 +274,7 @@ index 95fcce3..fd9fdf1 100644
  [[package]]
  name = "scoped-tls"
  version = "1.0.1"
-@@ -6613,8 +6774,19 @@ version = "3.23.0"
+@@ -6621,8 +6782,19 @@ version = "3.23.0"
  source = "registry+https://github.com/rust-lang/crates.io-index"
  checksum = "935177bb8c0cd8ca1a4e6d1a2ac8988bea69cab4f9d3a31311e012ad27868ea4"
  dependencies = [
@@ -294,7 +294,7 @@ index 95fcce3..fd9fdf1 100644
  ]
  
  [[package]]
-@@ -6914,6 +7086,12 @@ version = "0.1.5"
+@@ -6922,6 +7094,12 @@ version = "0.1.5"
  source = "registry+https://github.com/rust-lang/crates.io-index"
  checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
  
@@ -307,7 +307,7 @@ index 95fcce3..fd9fdf1 100644
  [[package]]
  name = "simpl"
  version = "0.1.0"
-@@ -12465,10 +12643,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+@@ -12432,10 +12610,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
  checksum = "743bd48c283afc0388f9b8827b976905fb217ad9e647fae3a379a9283c4def2c"
  dependencies = [
   "deranged",
@@ -320,7 +320,7 @@ index 95fcce3..fd9fdf1 100644
  ]
  
  [[package]]
-@@ -12477,6 +12657,16 @@ version = "0.1.8"
+@@ -12444,6 +12624,16 @@ version = "0.1.8"
  source = "registry+https://github.com/rust-lang/crates.io-index"
  checksum = "7694e1cfe791f8d31026952abf09c69ca6f6fa4e1a1229e18988f06a04a12dca"
  
@@ -338,14 +338,14 @@ index 95fcce3..fd9fdf1 100644
  name = "tinystr"
  version = "0.7.6"
 diff --git a/votor/Cargo.toml b/votor/Cargo.toml
-index a6dcff2..5d5aca4 100644
+index a6dcff2..6ff38b7 100644
 --- a/votor/Cargo.toml
 +++ b/votor/Cargo.toml
 @@ -74,7 +74,12 @@ tokio = { workspace = true, features = ["sync", "rt"] }
  wincode = { workspace = true, features = ["alloc"] }
  
  [dev-dependencies]
-+# ag-model hook: anyhow, itf, quint-connect and serde are for the Quint Connect driver
++# flh-model hook: anyhow, itf, quint-connect and serde are for the Quint Connect driver
  agave-votor = { path = ".", features = ["dev-context-only-utils"] }
 +anyhow = { workspace = true }
 +itf = "0.4"
@@ -355,7 +355,7 @@ index a6dcff2..5d5aca4 100644
  rand = { workspace = true }
  solana-net-utils = { path = "../net-utils", features = ["agave-unstable-api"] }
 diff --git a/votor/src/consensus_pool/parent_ready_tracker.rs b/votor/src/consensus_pool/parent_ready_tracker.rs
-index 1c9f2dc..1804807 100644
+index 1c9f2dc..db268d5 100644
 --- a/votor/src/consensus_pool/parent_ready_tracker.rs
 +++ b/votor/src/consensus_pool/parent_ready_tracker.rs
 @@ -541,3 +541,7 @@ mod tests {
@@ -363,19 +363,22 @@ index 1c9f2dc..1804807 100644
      }
  }
 +
-+// ag-model hook: Quint Connect driver.
++// flh-model hook: Quint Connect driver.
 +#[cfg(test)]
 +mod quint_connect;
 diff --git a/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs b/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs
 new file mode 100644
-index 0000000..445c0a7
+index 0000000..d9dc507
 --- /dev/null
 +++ b/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs
-@@ -0,0 +1,756 @@
-+//! ag-model hook.
+@@ -0,0 +1,759 @@
++//! flh-model hook.
 +//!
 +//! Model-based test of `ParentReadyTracker` against the Quint model in
-+//! `/opt/ag-model/spec` (`tracker.qnt`, wrapped by `tracker_connect.qnt`).
++//! `spec/` of the flh-model repo (`tracker.qnt`, wrapped by
++//! `tracker_connect.qnt`). This Agave checkout sits inside that repo as
++//! `agave/`, which is where the tests look for the spec: `../../spec` from
++//! this crate.
 +//!
 +//! How one test below works:
 +//!
@@ -392,8 +395,8 @@ index 0000000..445c0a7
 +//! This is a child module of the tracker, so it reads the tracker's private
 +//! fields directly.
 +//!
-+//! Run from `/opt/ag-model/agave`:
-+//!   `/opt/ag-model/t test -p agave-votor --features agave-unstable-api --lib quint_connect`
++//! Run from `agave/` in the flh-model repo:
++//!   `../t test -p agave-votor --features agave-unstable-api --lib quint_connect`
 +//!
 +//! A failure prints `Reproduce this error with QUINT_SEED=<seed>`; put that
 +//! variable in front of the same command to replay the same traces.
@@ -403,7 +406,7 @@ index 0000000..445c0a7
 +//! the two views that are compared (`model:` from the trace, `rust:` from the
 +//! tracker). `AG_TRACE=2` adds the tracker's own `Debug` output. The test
 +//! `one_short_trace` keeps the output to one trace of 20 steps:
-+//!   `AG_TRACE=1 /opt/ag-model/t test -p agave-votor --features agave-unstable-api \
++//!   `AG_TRACE=1 ../t test -p agave-votor --features agave-unstable-api \
 +//!        --lib quint_connect::one_short_trace -- --nocapture`
 +
 +// Named imports, not `super::*`: a glob would bring this module's own name
@@ -972,7 +975,7 @@ index 0000000..445c0a7
 +
 +/// One short trace, for reading with `AG_TRACE=1`.
 +#[quint_run(
-+    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    spec = "../../spec/tracker_connect.qnt",
 +    main = "c_raw_small",
 +    init = "initC",
 +    step = "stepRaw",
@@ -986,7 +989,7 @@ index 0000000..445c0a7
 +/// Any call sequence, no assumptions, four blocks per slot: slots fill up to
 +/// the limit, the root moves without a certificate, and nothing panics.
 +#[quint_run(
-+    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    spec = "../../spec/tracker_connect.qnt",
 +    main = "c_raw",
 +    init = "initC",
 +    step = "stepRaw",
@@ -1001,7 +1004,7 @@ index 0000000..445c0a7
 +/// of one slot arrives in most runs. This is the test that exercises the
 +/// panic. Traces are short because nothing happens after a panic.
 +#[quint_run(
-+    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    spec = "../../spec/tracker_connect.qnt",
 +    main = "c_raw_small",
 +    init = "initC",
 +    step = "stepRaw",
@@ -1014,7 +1017,7 @@ index 0000000..445c0a7
 +
 +/// Any certificates in any order, no chains.
 +#[quint_run(
-+    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    spec = "../../spec/tracker_connect.qnt",
 +    main = "c_free",
 +    init = "initC",
 +    step = "stepC",
@@ -1027,7 +1030,7 @@ index 0000000..445c0a7
 +
 +/// Chains, with the root starting at each position inside a window.
 +#[quint_run(
-+    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    spec = "../../spec/tracker_connect.qnt",
 +    main = "c_n100",
 +    init = "initC",
 +    step = "stepC",
@@ -1039,7 +1042,7 @@ index 0000000..445c0a7
 +}
 +
 +#[quint_run(
-+    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    spec = "../../spec/tracker_connect.qnt",
 +    main = "c_n101",
 +    init = "initC",
 +    step = "stepC",
@@ -1051,7 +1054,7 @@ index 0000000..445c0a7
 +}
 +
 +#[quint_run(
-+    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    spec = "../../spec/tracker_connect.qnt",
 +    main = "c_n102",
 +    init = "initC",
 +    step = "stepC",
@@ -1063,7 +1066,7 @@ index 0000000..445c0a7
 +}
 +
 +#[quint_run(
-+    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    spec = "../../spec/tracker_connect.qnt",
 +    main = "c_n103",
 +    init = "initC",
 +    step = "stepC",
@@ -1076,7 +1079,7 @@ index 0000000..445c0a7
 +
 +/// Five blocks per slot: slots fill up to the limit of four certified blocks.
 +#[quint_run(
-+    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    spec = "../../spec/tracker_connect.qnt",
 +    main = "c_b5",
 +    init = "initC",
 +    step = "stepC",
@@ -1090,7 +1093,7 @@ index 0000000..445c0a7
 +/// The forward-only step of tracker_pragmatic.qnt: nothing on passed slots and
 +/// no repeats, so every delivery is new to the tracker.
 +#[quint_run(
-+    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    spec = "../../spec/tracker_connect.qnt",
 +    main = "c_n101",
 +    init = "initC",
 +    step = "stepForward",
@@ -1104,7 +1107,7 @@ index 0000000..445c0a7
 +/// Finalization facts not assumed. The model's chain properties fail here,
 +/// but the two trackers must still agree.
 +#[quint_run(
-+    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    spec = "../../spec/tracker_connect.qnt",
 +    main = "c_nofinal",
 +    init = "initC",
 +    step = "stepC",
@@ -1118,7 +1121,7 @@ index 0000000..445c0a7
 +/// Block ids that change with the seed, so which block of a slot is the
 +/// smaller one varies from run to run.
 +#[quint_run(
-+    spec = "/opt/ag-model/spec/tracker_connect.qnt",
++    spec = "../../spec/tracker_connect.qnt",
 +    main = "c_n101",
 +    init = "initRandomIdsC",
 +    step = "stepC",

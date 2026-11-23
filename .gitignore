@@ -2,3 +2,4 @@ tools/
 _apalache-out/
 *.itf.json
 agave/
+agave-*/

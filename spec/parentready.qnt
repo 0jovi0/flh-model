@@ -3,7 +3,8 @@
 // ParentReady: constants, types, block ids, and the definition.
 // The Rust tracker and its checks are in tracker.qnt.
 //
-// Source: agave v4.5.0-beta.0, votor/src/consensus_pool/parent_ready_tracker.rs
+// Source: Agave v5.0.0-alpha.1, votor/src/consensus_pool/parent_ready_tracker.rs.
+// Line numbers in the comments are those of that version.
 // Scope: steady state. The root starts at a block in slot N that the node
 // holds a certificate for, and advances as the chain makes progress.
 module parentready {

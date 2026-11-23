@@ -4,13 +4,13 @@
 // (Quint Connect). It wraps tracker.qnt.
 //
 // The Rust side is the driver in the Agave copy:
-//   /opt/ag-model/agave/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs
+//   agave/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs
 // It asks Quint for random runs of an instance below, replays every step on
 // Agave's ParentReadyTracker and compares the two states after each step.
 //
-// Run the comparison from /opt/ag-model/agave:
-//   /opt/ag-model/t test -p agave-votor --features agave-unstable-api --lib quint_connect
-// Look at a trace by hand, from /opt/ag-model:
+// Run the comparison from agave/:
+//   ../t test -p agave-votor --features agave-unstable-api --lib quint_connect
+// Look at a trace by hand, from the repo root:
 //   ./q run --main=c_raw --init=initC --step=stepRaw --mbt --max-samples=1 \
 //       --max-steps=20 --out-itf=one.itf.json spec/tracker_connect.qnt
 module tracker_connect {

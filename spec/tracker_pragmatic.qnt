@@ -27,7 +27,7 @@
 //     root's slot, or a Skip certificate for it), and leaving it out would
 //     hide the runs that instance exists to show.
 //
-// Run from /opt/ag-model:
+// Run from the repo root:
 //   ./q run --main=prag_n101 --step=stepPragmatic --invariant=ALL --max-samples=3000 --max-steps=60 spec/tracker_pragmatic.qnt
 //   ./q verify --backend=tlc --main=prag_w4 --step=stepPragmatic --invariant=ALL spec/tracker_pragmatic.qnt   (about 2 minutes)
 //   ./q verify --backend=tlc --main=prag_tiny --step=stepPragmatic --invariant=ALL spec/tracker_pragmatic.qnt (about 5 minutes)

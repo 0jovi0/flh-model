@@ -4,9 +4,9 @@
 // certificates and root moves in any order, and the checks that it agrees
 // with the definition in parentready.qnt.
 //
-// Source: agave v4.5.0-beta.0, votor/src/consensus_pool/parent_ready_tracker.rs
+// Source: Agave v5.0.0-alpha.1, votor/src/consensus_pool/parent_ready_tracker.rs
 //
-// Run from /opt/ag-model (add --seed=<n> to reproduce a run; add
+// Run from the repo root (add --seed=<n> to reproduce a run; add
 // --init=initRandomIds to a `run` to also vary the block ids with the seed):
 //   ./q typecheck spec/tracker.qnt
 //   ./q test --main=tr_tests spec/tracker.qnt          (replayed Rust unit tests)
@@ -32,8 +32,8 @@ module tracker {
   //   open: the first slot of that window has a ready parent, or it is the
   //   window the initial root sits in. In the code a node arms its skip timers
   //   for a window when it sees a ParentReady for the window's first slot
-  //   (event_handler.rs:259, the only call of set_timeouts), and one timer
-  //   covers the rest of that window (timer_manager/timers.rs:88). Without a
+  //   (event_handler.rs:258, the only call of set_timeouts), and one timer
+  //   covers the rest of that window (timer_manager/timers.rs:89). Without a
   //   timer a node votes skip only in reaction to other votes for that slot,
   //   so a quorum of skip votes needs honest nodes whose window is open.
   // ASSUME_Q5 (always on): a slot never has more than MAX_CERTIFIED certified
@@ -128,7 +128,7 @@ module tracker {
 
   // set_root   lines 297-300. Entries below the new root are dropped. The
   // lists inside the entries that survive are not touched, and `highest`
-  // is not touched. Only called with a larger root (consensus_pool.rs:528).
+  // is not touched. Only called with a larger root (consensus_pool.rs:545).
   pure def setRoot(t: Tracker, r: Slot): Tracker =
     if (t.panicked) t
     else { ...t, root: r, st: SLOTS.mapBy(s => if (s < r) emptyStatus else t.st.get(s)) }
@@ -206,7 +206,7 @@ module tracker {
     not(wCerts.contains(b)),
     // The parent is certified first. For a block that does not start a
     // window this is stricter than the code: a Notarize vote only needs the
-    // voter to have notarized the parent (event_handler.rs:787-797), so a
+    // voter to have notarized the parent (event_handler.rs:790-800), so a
     // child's certificate can exist before its parent's. The node can still
     // receive the two in either order.
     wCerts.contains(p),
@@ -292,7 +292,7 @@ module tracker {
   action deliverCertified(b: Block): bool = all { wCerts.contains(b), nodeCertified(b) }
   action deliverSkip(s: Slot): bool = all { wSkips.contains(s), nodeSkip(s) }
   // The node roots a finalized block it holds the certificate for
-  // (event_handler.rs:954-1017). The root may jump over slots.
+  // (event_handler.rs:957-1020). The root may jump over slots.
   action advanceRoot(b: Block): bool = all { wFinal.contains(b), certs.contains(b), nodeRoot(b) }
 
   action step = any {

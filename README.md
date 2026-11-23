@@ -1,161 +1,105 @@
 # flh-model
 
-A Quint model of ParentReady from Alpenglow's fast leader handover (Agave v4.5.0-beta.0,
-`votor/src/consensus_pool/parent_ready_tracker.rs`), and a harness that checks the Rust
-tracker against it.
-
-## Layout
-
-The repo has to be checked out at `/opt/ag-model`: the specs, the driver and the
-wrappers refer to that path.
-
-| Path | What it is |
-|---|---|
-| `spec/parentready.qnt` | Constants, types, block ids, the definition of ParentReady |
-| `spec/tracker.qnt` | The Rust tracker copied into Quint, a driver (network + one node), the properties, instances, replayed Rust unit tests |
-| `spec/tracker_connect.qnt` | Trace source for the comparison with the Rust; wraps `tracker.qnt` |
-| `spec/tracker_pragmatic.qnt` | The same model moving only forward: no work on passed slots, no repeats; wraps `tracker.qnt` |
-| `agave/` | A copy of Agave at the pinned commit plus the test-only hooks. Not tracked here; rebuilt by `connect/setup.sh` |
-| `connect/agave-hooks.patch` | Edits to Agave: the driver and three hooks |
-| `connect/setup.sh` | Recreates `agave/` from the tag and the patch |
-| `q`, `t` | Run `quint` and `cargo` under a CPU and memory cap |
-| `tools/` | Node, JDK and Quint. Not tracked |
-
-## Running
-
-The wrappers cap a run at 4 cores (`Q_CPUS=<n>` to change) and 32 GB, at low priority.
-
-Model, from `/opt/ag-model`:
-
-```
-./q typecheck spec/tracker.qnt
-./q test --main=tr_tests spec/tracker.qnt
-./q run --main=tr_n101 --invariant=ALL --max-samples=3000 --max-steps=60 spec/tracker.qnt
-./q run --main=tr_free --invariant=NO_CHAIN --max-samples=3000 --max-steps=60 spec/tracker.qnt
-./q verify --backend=tlc --main=tr_tiny --invariant=ALL spec/tracker.qnt
-```
-
-Comparison with the Rust, from `/opt/ag-model/agave`:
-
-```
-/opt/ag-model/t test -p agave-votor --features agave-unstable-api --lib quint_connect
-```
-
-The feature flag is required: without it the votor crate compiles empty. The first build
-needs about 8 GB of disk.
+A Quint model of ParentReady from Alpenglow's fast leader handover, and a
+quint-connect driver that checks Agave's `ParentReadyTracker` against it.
+Agave version: v5.0.0-alpha.1.
 
 ## The model
 
-- **Definition.** `ready(certs, skips, s, b)`: block `b` is certified, lies in an
-  earlier slot than `s`, and every slot strictly between them has a Skip certificate.
-- **Tracker copy.** `newTracker`, `addCertified`, `addSkip`, `setRoot`,
-  `productionParent`, with the Rust line numbers in the comments.
-- **Driver.** A network produces certificates, Skip certificates and finalizations;
-  a node receives them in any order, with repeats, and moves its root.
-- **Assumptions about the network:**
-  `ASSUME_CHAIN` a block is certified only on a valid parent; `ASSUME_FINAL` a
-  finalized slot has no Skip certificate and no second certified block;
-  `ASSUME_WINDOW` a slot gets a Skip certificate only once its window is open (its
-  first slot has a ready parent), because nodes arm their skip timers for a window
-  when they see ParentReady for its first slot; `ASSUME_Q5` at most 4 certified
-  blocks per slot.
-- **Properties.** Thirteen, named `prop<number>_<name>` and indexed in a comment in
-  `tracker.qnt`. Each is tagged by why it holds: `[tracker]` compares the copy with
-  the definition, `[construction]` restates the model, `[assumption]` follows from
-  the network assumptions. Check them with the bundles `ALL` or `NO_CHAIN`.
-- **Instances.** `tr_n100`..`tr_n103` (root at each position in a window), `tr_b5`,
-  `tr_w2`, `tr_free` (no chains, skips in any slot), `tr_nofinal` (expected to fail
-  `ALL`), `tr_tiny` (small enough for every state).
+ParentReady decides which blocks a leader may build on at the start of its window.
 
-## The pragmatic driver
-
-`spec/tracker_pragmatic.qnt` wraps `tracker.qnt` with a step, `stepPragmatic`, that
-leaves out what the tracker ignores: network activity and deliveries for slots at or
-below the node's root, and re-delivery of certificates the node already holds.
-
-It is a subset of the runs of `tracker.qnt`, so a violation found with it is a violation
-of the full model. A pass covers only forward-moving runs. Use it with all assumptions
-on.
+- `spec/parentready.qnt` is the definition: block `b` is a ready parent for slot `s`
+  when `b` is certified, lies in an earlier slot, and every slot strictly between
+  them has a Skip certificate.
+- `spec/tracker.qnt` is the Rust tracker
+  (`votor/src/consensus_pool/parent_ready_tracker.rs`) copied into Quint, with the
+  Rust line numbers in the comments. Around it sits a network that produces block
+  certificates, Skip certificates and finalizations, and a node that receives them
+  in any order, with repeats, and moves its root.
+- Thirteen properties (`prop1_...` to `prop13_...`). Those tagged `[tracker]` state
+  that the copy agrees with the definition whatever the order of arrival. The network
+  obeys four assumptions (`ASSUME_CHAIN`, `ASSUME_FINAL`, `ASSUME_WINDOW`, `ASSUME_Q5`),
+  described at the top of `spec/tracker.qnt`.
+- `spec/tracker_pragmatic.qnt` runs the same model moving only forward: nothing for
+  slots the node has passed, no repeated deliveries.
 
 ```
-./q run --main=prag_n101 --step=stepPragmatic --invariant=ALL --max-samples=3000 --max-steps=60 spec/tracker_pragmatic.qnt
-./q verify --backend=tlc --main=prag_w4 --step=stepPragmatic --invariant=ALL spec/tracker_pragmatic.qnt
+./q test --main=tr_tests spec/tracker.qnt       # the tracker's Rust unit tests, replayed
+./q run --main=tr_n101 --invariant=ALL --max-samples=3000 --max-steps=60 spec/tracker.qnt
+./q verify --backend=tlc --main=tr_tiny --invariant=ALL spec/tracker.qnt   # every state of a small instance
 ```
 
-## The comparison with the Rust
+## The driver
 
-The driver is `agave/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs`. It
-is a child module of the tracker, so it reads the tracker's private fields. For each
-test:
+`connect/agave-hooks.patch` adds one test module to Agave:
+`votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs`. Each test:
 
-1. Quint runs one instance of `tracker_connect.qnt` and writes each random run as a
-   trace: a list of states, each tagged with the action that produced it and the
+1. Quint simulates the model (`spec/tracker_connect.qnt`) and writes every random run
+   as a trace: a list of states, each tagged with the action that produced it and the
    values that action picked.
-2. For every state, the driver makes the matching call on the Rust tracker:
+2. For every state, `TrackerDriver::step` makes the matching call on the Rust tracker:
    `deliverCertified(b)` is `add_new_notar_fallback_or_stronger`, `deliverSkip(s)` is
-   `add_new_skip`, `advanceRoot(b)` is `set_root`. Network actions (`certify`,
-   `skipSlot`, `finalize`) make no call.
-3. After every step, the model's state in the trace and the Rust tracker's state are
-   reduced to the same shape and must be equal. A difference fails the test and prints
-   the diff and the seed.
+   `add_new_skip`, `advanceRoot(b)` is `set_root`. Actions of the network make no call.
+3. After every step one `View` is built twice, from the model's state in the trace
+   (`from_spec`) and from the Rust tracker (`from_driver`), and the two must be equal. A
+   difference fails the test and prints the diff and a `QUINT_SEED` that replays it.
 
-What is compared: per slot the certified blocks, ready parents and skip flag; the
-root; the highest slot with a ready parent; every ParentReady event so far (the same
-events per call, order inside a call ignored); what the leader of each slot would be
-told; whether the fifth-block assert fired. At the start of every trace the driver
-also checks that no two blocks share an id.
-
-Three kinds of traces:
-
-- **`stepC`**: the network and node of `tracker.qnt`, under the assumptions.
-- **`stepForward`**: the pragmatic step, forward only (test `chain_forward_only`).
-- **`stepRaw`**: any call sequence, with no network and no assumptions. This reaches the
-  fifth-block panic, a root without a certificate, and skips in any slot order.
-
-Step weights:
-
-- **Mostly new input above the root.** The tracker ignores passed slots and repeats. A
-  share of both is kept: ignoring them is a rule of the tracker too.
-- **Each run draws how skipped it is.** At init a run draws the slots that may be
-  skipped: none, about a quarter, about half, or all of them. A skippable slot makes the
-  rest of its window skippable, as a node skips the rest of a window.
-
-Measured on 200 traces of 60 steps of `stepC`, by how skipped the run may be:
-
-| Slots that may be skipped | Skipped at the end | Blocks finalized | Slots the root climbed (of 9) |
-|---|---|---|---|
-| none | 0.0 | 3.3 | 6.9 |
-| about a quarter | 2.8 | 3.1 | 6.7 |
-| about half | 4.4 | 3.0 | 6.4 |
-| all | 5.3 | 2.3 | 5.5 |
-
-Share of steps, on 100 traces of 60 steps (plain: unweighted random picks):
-
-| Steps that | `stepRaw` plain | `stepRaw` weighted | `stepC` plain | `stepC` weighted |
-|---|---|---|---|---|
-| change the tracker | 31% | 55% | 21% | 27% |
-| hit a slot at or below the root | 44% | 22% | 15% | 20% |
-| repeat something already delivered | 17% | 16% | 22% | 14% |
-| move the root | 9% | 7% | 3% | 4% |
-| are network only | - | - | 39% | 35% |
-
-To watch both sides of a run:
+A `View` holds, per slot, the certified blocks, the ready parents and the skip flag;
+the root; the highest slot with a ready parent; every ParentReady event; and what the
+leader of each slot would be told.
 
 ```
-AG_TRACE=1 /opt/ag-model/t test -p agave-votor --features agave-unstable-api \
+cd agave
+../t test -p agave-votor --features agave-unstable-api --lib quint_connect
+```
+
+## Watching both sides
+
+```
+cd agave
+AG_TRACE=1 ../t test -p agave-votor --features agave-unstable-api \
   --lib quint_connect::one_short_trace -- --nocapture
 ```
 
-This prints, per step, the call made on the Rust tracker, the events it returned,
-and the two views (`model:` and `rust:`). Blocks are written `slot.id`. `AG_TRACE=2`
-adds the tracker's own `Debug` output.
-
-## Rebuilding the Agave copy
+For every step this prints the model's action, the call made on the Rust tracker with
+the events it returned, and the two views that are compared: `model:` from the trace
+and `rust:` from the tracker. Blocks are written `slot.id`. One step of the output:
 
 ```
-connect/setup.sh
+[trace 1 step 1] model action: nodeCertified
+  call:  add_new_notar_fallback_or_stronger(103.7481)
+         events returned, in the tracker's order: [104 <- 103.7481]
+  model: root=101 highest=104
+      slot 101: skip=false certified=[101.24652] parents=[]
+      slot 102: skip=false certified=[] parents=[101.24652]
+      slot 103: skip=false certified=[103.7481] parents=[]
+      slot 104: skip=false certified=[] parents=[103.7481]
+      events (sorted): [104 <- 103.7481]
+      leader before the step: [101: MissedWindow, 102: Parent(101.24652), 103: ParentNotReady, 104: ParentNotReady, 105: ParentNotReady]
+  rust:  root=101 highest=104
+      slot 101: skip=false certified=[101.24652] parents=[]
+      slot 102: skip=false certified=[] parents=[101.24652]
+      slot 103: skip=false certified=[103.7481] parents=[]
+      slot 104: skip=false certified=[] parents=[103.7481]
+      events (sorted): [104 <- 103.7481]
+      leader before the step: [101: MissedWindow, 102: Parent(101.24652), 103: ParentNotReady, 104: ParentNotReady, 105: ParentNotReady]
 ```
 
-clones tag `v4.5.0-beta.0` (commit `ef54b258`) from the builder's tree and applies
-`connect/agave-hooks.patch`. After changing the driver, refresh the patch from `agave/`
-with `git diff v4.5.0-beta.0 > ../connect/agave-hooks.patch`.
+`AG_TRACE=2` adds the tracker's own `Debug` output.
+
+## Setup
+
+```
+./install-tools.sh     # Node, a JDK and Quint into tools/
+connect/setup.sh       # Agave v5.0.0-alpha.1 into agave/, plus the patch
+```
+
+The model needs only the first step. The driver needs both, plus a Rust toolchain
+through rustup and Agave's build dependencies. `q` and `t` run `quint` and `cargo` with
+the toolchain from `tools/`, capped at 4 cores (`Q_CPUS=<n>` to change).
+
+After changing the driver, refresh the patch from inside `agave/`:
+
+```
+git add -A && git diff --cached v5.0.0-alpha.1 > ../connect/agave-hooks.patch
+```
