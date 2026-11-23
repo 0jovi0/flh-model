@@ -21,7 +21,7 @@ After both steps the clone looks like this:
 ```
 flh-model/
   spec/        the model
-  connect/     agave-hooks.patch, setup.sh
+  connect/     agave-hooks.patch, setup.sh, mutants/, check-mutants.sh
   tools/       Node, JDK, Quint             (created by install-tools.sh)
   agave/       Agave at the pinned commit   (created by connect/setup.sh)
   q, t         run quint and cargo with the toolchain from tools/
@@ -72,7 +72,7 @@ From the root of the clone:
    `add_new_skip`, `advanceRoot(b)` is `set_root`. Actions of the network make no call.
 3. After every step one `View` is built twice, from the model's state in the trace
    (`from_spec`) and from the Rust tracker (`from_driver`), and the two must be equal. A
-   difference fails the test and prints the diff and a `QUINT_SEED` that replays it.
+   difference fails the test and prints a `QUINT_SEED` that replays it.
 
 A `View` holds, per slot, the certified blocks, the ready parents and the skip flag;
 the root; the highest slot with a ready parent; every ParentReady event; and what the
@@ -118,6 +118,31 @@ and `rust:` from the tracker. Blocks are written `slot.id`. One step of the outp
 ```
 
 `AG_TRACE=2` adds the tracker's own `Debug` output.
+
+## Mutants
+
+`connect/mutants/` holds three patches. Each changes Agave's tracker so that it no
+longer matches the model: one stops carrying a skipped slot's ready parents forward,
+one accepts a Skip certificate for the root slot, one drops the root's own entry in
+`set_root`.
+
+```
+connect/check-mutants.sh
+```
+
+applies them one at a time, runs the comparison tests and reverses the patch. A mutant
+is detected when the tests fail with a state mismatch; the script exits 0 when all
+three are. To see the mismatch for one mutant, from `agave/`:
+
+```
+git apply ../connect/mutants/set-root-drops-root-entry.patch
+QUINT_VERBOSE=1 ../t test -p agave-votor --features agave-unstable-api \
+  --lib quint_connect::chain_root_101
+git apply -R ../connect/mutants/set-root-drops-root-entry.patch
+```
+
+The comparison tests can run nightly as a regression test for the tracker, and
+`check-mutants.sh` as a check that they still fail when the tracker is wrong.
 
 ## Changing the driver
 

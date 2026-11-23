@@ -1,0 +1,11 @@
+--- a/votor/src/consensus_pool/parent_ready_tracker.rs
++++ b/votor/src/consensus_pool/parent_ready_tracker.rs
+@@ -171,7 +171,7 @@
+ 
+     /// Adds a new skip certificate
+     pub(super) fn add_new_skip(&mut self, slot: Slot, events: &mut Vec<VotorEvent>) {
+-        if slot <= self.root {
++        if slot < self.root {
+             return;
+         }
+ 

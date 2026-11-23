@@ -1,0 +1,16 @@
+--- a/votor/src/consensus_pool/parent_ready_tracker.rs
++++ b/votor/src/consensus_pool/parent_ready_tracker.rs
+@@ -198,13 +198,6 @@
+             // as a parent
+             potential_parents.push(*nf);
+         }
+-        if status.skip {
+-            // If there's a skip certificate we can use the parents of the previous slot
+-            // as a parent
+-            for parent in &status.parents_ready {
+-                potential_parents.push(*parent);
+-            }
+-        }
+ 
+         if potential_parents.is_empty() {
+             return;

@@ -1,0 +1,11 @@
+--- a/votor/src/consensus_pool/parent_ready_tracker.rs
++++ b/votor/src/consensus_pool/parent_ready_tracker.rs
+@@ -296,7 +296,7 @@
+ 
+     pub(super) fn set_root(&mut self, root: Slot) {
+         self.root = root;
+-        self.slot_statuses.retain(|&s, _| s >= root);
++        self.slot_statuses.retain(|&s, _| s > root);
+     }
+ }
+ 

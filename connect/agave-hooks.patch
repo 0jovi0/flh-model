@@ -368,10 +368,10 @@ index 1c9f2dc..db268d5 100644
 +mod quint_connect;
 diff --git a/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs b/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs
 new file mode 100644
-index 0000000..d9dc507
+index 0000000..14eb5d7
 --- /dev/null
 +++ b/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs
-@@ -0,0 +1,759 @@
+@@ -0,0 +1,760 @@
 +//! flh-model hook.
 +//!
 +//! Model-based test of `ParentReadyTracker` against the Quint model in
@@ -390,7 +390,7 @@ index 0000000..d9dc507
 +//! 3. After each step a [`View`] is built twice: from the model's state in
 +//!    the trace ([`State::from_spec`]) and from the Rust tracker
 +//!    ([`State::from_driver`]). If the two differ, the test fails and prints
-+//!    the diff and the seed.
++//!    the seed.
 +//!
 +//! This is a child module of the tracker, so it reads the tracker's private
 +//! fields directly.
@@ -399,7 +399,8 @@ index 0000000..d9dc507
 +//!   `../t test -p agave-votor --features agave-unstable-api --lib quint_connect`
 +//!
 +//! A failure prints `Reproduce this error with QUINT_SEED=<seed>`; put that
-+//! variable in front of the same command to replay the same traces.
++//! variable in front of the same command to replay the same traces. Add
++//! `QUINT_VERBOSE=1` to print where the two states differ.
 +//!
 +//! To watch both sides, set `AG_TRACE` and pass `--nocapture`. For every step
 +//! this prints the call made on the Rust tracker, the events it returned, and
