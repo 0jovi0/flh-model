@@ -1,13 +1,15 @@
 #!/bin/bash
 # Check that the comparison tests detect each patch in connect/mutants/.
-# For every patch: apply it to agave/, run the comparison tests, reverse it.
+# First the baseline: the tests must pass on the unmodified tracker.
+# Then for every patch: apply it to agave/, run the tests, reverse it.
 # A mutant counts as detected when the tests fail with a state mismatch.
 #
 # Usage: connect/check-mutants.sh      (from anywhere, after connect/setup.sh)
 #   QUINT_SEED=<seed> connect/check-mutants.sh    pin the traces
 #
 # Exit status: 0 every mutant detected, 1 a mutant was not detected,
-#              2 a patch could not be applied or agave/ is missing.
+#              2 the baseline fails, a patch could not be applied, or
+#                agave/ is missing.
 set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
@@ -31,6 +33,23 @@ restore() {
 trap restore EXIT
 trap 'restore; exit 130' INT TERM
 
+# Run the comparison tests, show the relevant lines, keep the full output in $1.
+run_tests() {
+  "$ROOT/t" test -p agave-votor --features agave-unstable-api --lib quint_connect 2>&1 \
+    | tee "$1" \
+    | grep --line-buffered -E "^test .*quint_connect::|$MISMATCH|Reproduce this error|^test result|^error"
+  return "${PIPESTATUS[0]}"
+}
+
+echo "== baseline (unmodified tracker)"
+if run_tests "$LOGS/baseline.log"; then
+  echo "   passes"
+else
+  echo "   the comparison tests fail without any mutant; no mutant was tested"
+  echo "full test output: $LOGS"
+  exit 2
+fi
+
 status=0
 summary=""
 for patch in "$HERE"/mutants/*.patch; do
@@ -46,10 +65,8 @@ for patch in "$HERE"/mutants/*.patch; do
   fi
   git apply "$patch"
   applied="$patch"
-  "$ROOT/t" test -p agave-votor --features agave-unstable-api --lib quint_connect 2>&1 \
-    | tee "$log" \
-    | grep --line-buffered -E "^test .*quint_connect::|$MISMATCH|Reproduce this error|^test result|^error"
-  code="${PIPESTATUS[0]}"
+  run_tests "$log"
+  code="$?"
   restore
   failed="$(grep -cE '^test .*quint_connect::.* FAILED$' "$log")"
   if [ "$code" -ne 0 ] && grep -q "$MISMATCH" "$log"; then

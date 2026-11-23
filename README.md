@@ -130,9 +130,10 @@ one accepts a Skip certificate for the root slot, one drops the root's own entry
 connect/check-mutants.sh
 ```
 
-applies them one at a time, runs the comparison tests and reverses the patch. A mutant
-is detected when the tests fail with a state mismatch; the script exits 0 when all
-three are. To see the mismatch for one mutant, from `agave/`:
+first requires the comparison tests to pass on the unmodified tracker. It then applies
+the patches one at a time, runs the tests and reverses each patch. A mutant is detected
+when the tests fail with a state mismatch; the script exits 0 when all three are. To
+see the mismatch for one mutant, from `agave/`:
 
 ```
 git apply ../connect/mutants/set-root-drops-root-entry.patch
