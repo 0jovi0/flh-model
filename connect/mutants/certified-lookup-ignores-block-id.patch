@@ -1,0 +1,11 @@
+--- a/votor/src/consensus_pool/parent_ready_tracker.rs
++++ b/votor/src/consensus_pool/parent_ready_tracker.rs
+@@ -287,7 +287,7 @@
+     pub(super) fn has_notar_fallback_or_stronger(&self, block: Block) -> bool {
+         self.slot_statuses
+             .get(&block.slot)
+-            .is_some_and(|ss| ss.notar_fallbacks.contains(&block))
++            .is_some_and(|ss| !ss.notar_fallbacks.is_empty())
+     }
+ 
+     fn highest_parent_ready(&self) -> Slot {

@@ -368,10 +368,10 @@ index 1c9f2dc..db268d5 100644
 +mod quint_connect;
 diff --git a/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs b/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs
 new file mode 100644
-index 0000000..14eb5d7
+index 0000000..526eceb
 --- /dev/null
 +++ b/votor/src/consensus_pool/parent_ready_tracker/quint_connect.rs
-@@ -0,0 +1,760 @@
+@@ -0,0 +1,772 @@
 +//! flh-model hook.
 +//!
 +//! Model-based test of `ParentReadyTracker` against the Quint model in
@@ -558,6 +558,10 @@ index 0000000..14eb5d7
 +    /// What the leader of each slot would have been told just before this
 +    /// step.
 +    leader_before: BTreeMap<Slot, QChoice>,
++    /// The blocks `has_notar_fallback_or_stronger` says yes to, asked for
++    /// every block of the instance. In the model: every block in a
++    /// `certified` set.
++    known: BTreeSet<QBlock>,
 +}
 +
 +impl View {
@@ -621,6 +625,11 @@ index 0000000..14eb5d7
 +        } else {
 +            let mut events = tr.events;
 +            events.sort();
++            let known = tr
++                .st
++                .values()
++                .flat_map(|status| status.certified.iter().copied())
++                .collect();
 +            Self {
 +                panicked: false,
 +                root: tr.root,
@@ -632,6 +641,7 @@ index 0000000..14eb5d7
 +                    .collect(),
 +                events,
 +                leader_before: var(&vars, "::leaderBefore")?,
++                known,
 +            }
 +        };
 +        if trace_level() > 0 {
@@ -674,12 +684,6 @@ index 0000000..14eb5d7
 +                "duplicate block in parents_ready of slot {slot}: {:?}",
 +                status.parents_ready
 +            );
-+            for block in &status.notar_fallbacks {
-+                ensure!(
-+                    tracker.has_notar_fallback_or_stronger(*block),
-+                    "has_notar_fallback_or_stronger denies {block:?}"
-+                );
-+            }
 +            let status = QStatus {
 +                skip: status.skip,
 +                certified,
@@ -691,6 +695,13 @@ index 0000000..14eb5d7
 +        }
 +        let mut events = driver.events.clone();
 +        events.sort();
++        // Asked for every block, so a wrong yes shows as well as a wrong no.
++        let known = driver
++            .blocks
++            .iter()
++            .copied()
++            .filter(|block| tracker.has_notar_fallback_or_stronger(block.to_block()))
++            .collect();
 +        Ok(Self {
 +            panicked: false,
 +            root: tracker.root,
@@ -698,6 +709,7 @@ index 0000000..14eb5d7
 +            st,
 +            events,
 +            leader_before: driver.leader_before.clone(),
++            known,
 +        })
 +    }
 +}

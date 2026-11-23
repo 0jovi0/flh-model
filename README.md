@@ -123,10 +123,10 @@ and `rust:` from the tracker. Blocks are written `slot.id`. One step of the outp
 
 ## Mutants
 
-`connect/mutants/` holds three patches. Each changes Agave's tracker so that it no
+`connect/mutants/` holds four patches. Each changes Agave's tracker so that it no
 longer matches the model: one stops carrying a skipped slot's ready parents forward,
 one accepts a Skip certificate for the root slot, one drops the root's own entry in
-`set_root`.
+`set_root`, one makes the certified-block lookup ignore which block is asked about.
 
 ```
 connect/check-mutants.sh
@@ -134,7 +134,7 @@ connect/check-mutants.sh
 
 first requires the comparison tests to pass on the unmodified tracker. It then applies
 the patches one at a time, runs the tests and reverses each patch. A mutant is detected
-when the tests fail with a state mismatch; the script exits 0 when all three are. To
+when the tests fail with a state mismatch; the script exits 0 when all four are. To
 see the mismatch for one mutant, from `agave/`:
 
 ```
