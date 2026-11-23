@@ -1,10 +1,13 @@
-# ag-model
+# flh-model
 
-A Quint model of Alpenglow's ParentReady (Agave v4.5.0-beta.0,
+A Quint model of ParentReady from Alpenglow's fast leader handover (Agave v4.5.0-beta.0,
 `votor/src/consensus_pool/parent_ready_tracker.rs`), and a harness that checks the Rust
 tracker against it.
 
 ## Layout
+
+The repo has to be checked out at `/opt/ag-model`: the specs, the driver and the
+wrappers refer to that path.
 
 | Path | What it is |
 |---|---|
